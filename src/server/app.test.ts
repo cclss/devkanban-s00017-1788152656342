@@ -111,6 +111,35 @@ describe('POST /api/analyze', () => {
     }
   })
 
+  it('streams load→audit→ai→done-partial via the default evaluator when the key is absent', async () => {
+    // No `evaluateAi` injected: the app falls back to the real Claude evaluator,
+    // which short-circuits to `missing-key` (no network) when no key is sent, so
+    // the run still streams a clean `done-partial`.
+    const base = boot({
+      deps: {
+        load: {
+          fetchImpl: okFetch('<html><head><title>Hi</title></head><body>ok</body></html>'),
+          guardOptions: { resolver: publicResolver },
+        },
+      },
+    })
+
+    const res = await analyze(base, { url: 'https://example.com' })
+    expect(res.status).toBe(200)
+
+    const events = readEvents(await res.text())
+    const stages = events
+      .filter((e): e is Extract<StageEvent, { type: 'stage' }> => e.type === 'stage')
+      .map((e) => e.stage)
+    expect(stages).toEqual(['load', 'audit', 'ai', 'done-partial'])
+
+    const result = events.at(-1)
+    expect(result?.type).toBe('result')
+    if (result?.type === 'result') {
+      expect(result.result.outcome).toBe('done-partial')
+    }
+  })
+
   it('emits error-load and no audit/ai stage for an SSRF (loopback) target', async () => {
     const base = boot({
       deps: { load: { guardOptions: { resolver: publicResolver } } },

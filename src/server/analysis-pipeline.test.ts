@@ -198,9 +198,12 @@ describe('runAnalysis — AI failure → done-partial', () => {
   })
 
   it('routes an invalid key to the confirmed key-error partial copy', async () => {
-    // The default evaluator rejects any present key (real call not wired yet).
+    // An auth-rejected key surfaces as an `invalid-key` AI failure. Injected here
+    // so the test stays network-free — the default evaluator now makes a real call.
+    const invalidKey: AiEvaluator = async () => ({ ok: false, reason: 'invalid-key' })
     const events = await collect({
       load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: invalidKey,
     })
     const report = resultOf(events) as AnalysisReport
     expect(report.outcome).toBe('done-partial')

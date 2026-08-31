@@ -31,16 +31,17 @@ import {
   type AnalysisReport,
   type Grade,
   type ReportResult,
+  type Screenshot,
 } from '../core/report'
 import { partialReasonMessage } from './analysis-copy'
 import { runLoad, type LoadStageOptions } from './load-stage'
 import { runAudit, type AuditResult } from './audit-stage'
 import {
-  defaultAiEvaluator,
   runAi,
   type AiEvaluation,
   type AiEvaluator,
 } from './ai-stage'
+import { createClaudeAiEvaluator } from './claude-evaluator'
 import {
   resultEvent,
   serializeEvent,
@@ -64,11 +65,24 @@ export interface AnalysisRequest {
 export interface AnalysisDeps {
   /** Load-stage options: fetch impl, SSRF guard options, timeout. */
   load?: LoadStageOptions
-  /** AI evaluator boundary. Defaults to the key-gating {@link defaultAiEvaluator}. */
+  /**
+   * AI evaluator boundary. Defaults to {@link DEFAULT_AI_EVALUATOR}, the real
+   * Claude rubric evaluator, which builds a client from the request's API key
+   * per call. Tests inject a stub to stay network-free.
+   */
   evaluateAi?: AiEvaluator
   /** Clock for `analyzedAt`. Defaults to `() => new Date()`. */
   now?: () => Date
 }
+
+/**
+ * The default AI evaluator wired into every `/api/analyze` run: the real
+ * `claude-sonnet-5` rubric evaluator. It constructs the Anthropic client from
+ * the per-request API key inside each call (the key never leaves that call), so
+ * a single shared instance is safe. An absent/invalid key or any provider/parse
+ * failure degrades the run to `done-partial` via the standard AI-failure path.
+ */
+export const DEFAULT_AI_EVALUATOR: AiEvaluator = createClaudeAiEvaluator()
 
 /**
  * 100-point grade cuts. The AI-rubric and auto-audit scores combine onto a
@@ -97,6 +111,7 @@ function buildDoneReport(
   analyzedAt: string,
   audit: AuditResult,
   ai: Extract<AiEvaluation, { ok: true }>,
+  screenshots: Screenshot[],
 ): AnalysisReport {
   const total = audit.auditScore + ai.llmScore
   return {
@@ -114,7 +129,7 @@ function buildDoneReport(
     },
     categories: audit.categories,
     llmAxes: ai.axes,
-    screenshots: [],
+    screenshots,
   }
 }
 
@@ -124,6 +139,7 @@ function buildPartialReport(
   analyzedAt: string,
   audit: AuditResult,
   ai: Extract<AiEvaluation, { ok: false }>,
+  screenshots: Screenshot[],
 ): AnalysisReport {
   return {
     outcome: 'done-partial',
@@ -140,7 +156,7 @@ function buildPartialReport(
     },
     categories: audit.categories,
     llmAxes: null,
-    screenshots: [],
+    screenshots,
     partialReason: partialReasonMessage(ai.reason),
   }
 }
@@ -155,7 +171,7 @@ export async function* runAnalysis(
   deps: AnalysisDeps = {},
 ): AsyncGenerator<StageEvent, void, void> {
   const now = deps.now ?? (() => new Date())
-  const evaluateAi = deps.evaluateAi ?? defaultAiEvaluator
+  const evaluateAi = deps.evaluateAi ?? DEFAULT_AI_EVALUATOR
 
   // Stage 1 — load (the only terminal-failure stage).
   yield stageEvent('load')
@@ -165,6 +181,10 @@ export async function* runAnalysis(
     yield resultEvent(load.report)
     return
   }
+
+  // Any captured renderings ride from load → AI evaluator (as image blocks) and
+  // the finished report. Baseline load is text-only, so this is normally empty.
+  const screenshots = load.screenshots ?? []
 
   // Stage 2 — audit (minimal real HTML checks).
   yield stageEvent('audit')
@@ -178,6 +198,7 @@ export async function* runAnalysis(
       html: load.html,
       apiKey: request.apiKey,
       model: request.model,
+      screenshots,
     },
     evaluateAi,
   )
@@ -185,8 +206,8 @@ export async function* runAnalysis(
   // Stage 4 — done / done-partial.
   const analyzedAt = now().toISOString()
   const report: ReportResult = ai.ok
-    ? buildDoneReport(request.url, analyzedAt, audit, ai)
-    : buildPartialReport(request.url, analyzedAt, audit, ai)
+    ? buildDoneReport(request.url, analyzedAt, audit, ai, screenshots)
+    : buildPartialReport(request.url, analyzedAt, audit, ai, screenshots)
 
   yield stageEvent(report.outcome)
   yield resultEvent(report)

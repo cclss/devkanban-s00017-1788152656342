@@ -16,7 +16,7 @@
  * `analysis-copy` messages, and `core/report` types. It owns the only Node/fetch
  * surface in the pipeline (behind the injected default).
  */
-import type { LoadErrorReport } from '../core/report'
+import type { LoadErrorReport, Screenshot } from '../core/report'
 import { checkUrl, type SsrfGuardOptions } from './ssrf-guard'
 import { loadErrorMessage, type LoadFailureReason } from './analysis-copy'
 
@@ -51,6 +51,12 @@ export interface LoadSuccess {
   ok: true
   html: string
   statusCode: number
+  /**
+   * Captured page renderings, when the load stage produced any. Threaded through
+   * to the AI evaluator (as image blocks) and the finished report. Optional: the
+   * baseline load is text-only, so this is usually absent.
+   */
+  screenshots?: Screenshot[]
 }
 
 /** Failed load: the terminal Korean error report to stream to the client. */
