@@ -1,0 +1,16 @@
+# Run/deploy manifest — see conventions/preview-toml.md.
+#
+# This app is a monolithic Node server: the Express backend (src/server) serves
+# BOTH the built SPA (dist/) and the dynamic POST /api/analyze endpoint on one
+# port. Auto-detection would otherwise see the Vite frontend and treat it as a
+# static build, missing the server — so the run shape is declared explicitly.
+model = "server"
+
+[build]
+# Type-check (tsc -b) + build the static SPA into dist/.
+command = "npm run build"
+
+[serve]
+# Long-running server; it binds process.env.PORT on 0.0.0.0 and serves dist/.
+command  = "npm start"
+port_env = "PORT"
