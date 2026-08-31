@@ -9,7 +9,9 @@ import {
 import { parseEvent, type StageEvent } from './stage-events'
 import type { AiEvaluator } from './ai-stage'
 import type { LoadFetch } from './load-stage'
+import { CHECK_COUNT } from './check-registry'
 import {
+  AUDIT_CATEGORY_IDS,
   AUDIT_MAX_SCORE,
   TOTAL_MAX_SCORE,
   type AnalysisReport,
@@ -72,6 +74,14 @@ function resultOf(events: StageEvent[]) {
   expect(last?.type).toBe('result')
   return (last as { type: 'result'; result: AnalysisReport | LoadErrorReport }).result
 }
+
+/** Total number of checks carried across all of a report's categories. */
+function totalChecks(report: AnalysisReport): number {
+  return report.categories.reduce((sum, c) => sum + c.checks.length, 0)
+}
+
+/** A bare page (no title / meta / viewport / lang / …) — exercises many checks. */
+const BARE_HTML = '<!doctype html><html><head></head><body><img src="a.png"></body></html>'
 
 describe('runAnalysis — happy path', () => {
   it('emits load → audit → ai → done in order, then one result', async () => {
@@ -222,6 +232,58 @@ describe('runAnalysis — AI failure → done-partial', () => {
     expect(report.partialReason).toBe(
       'AI 평가 결과 없음: API 사용 한도를 초과하여 자동 점검 결과만 표시합니다.',
     )
+  })
+})
+
+describe('runAnalysis — full 22-check registry through the pipeline', () => {
+  it('carries the complete registry on the happy-path 100-point report', async () => {
+    const events = await collect({
+      load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: successEvaluator,
+    })
+    const report = resultOf(events) as AnalysisReport
+
+    expect(report.outcome).toBe('done')
+    expect(report.score.max).toBe(TOTAL_MAX_SCORE)
+    // The five categories, in canonical order, carry all 22 checks combined.
+    expect(report.categories.map((c) => c.id)).toEqual([...AUDIT_CATEGORY_IDS])
+    expect(totalChecks(report)).toBe(CHECK_COUNT)
+    expect(report.llmAxes).toEqual(AXES)
+  })
+
+  it('carries the same complete registry on the AI-failure 60-point partial report', async () => {
+    // Bare HTML → many failing/warn checks, yet the full registry must still ship.
+    const events = await collect(
+      { load: { fetchImpl: okFetch(BARE_HTML), guardOptions: { allowPrivateNetwork: true } } },
+      { url: PUBLIC_URL }, // no apiKey → AI stage fails → done-partial
+    )
+    const report = resultOf(events) as AnalysisReport
+
+    expect(report.outcome).toBe('done-partial')
+    expect(report.score.max).toBe(AUDIT_MAX_SCORE)
+    expect(report.score.grade).toBe('pending')
+    expect(report.llmAxes).toBeNull()
+    // Same full registry as the happy path: five categories, all 22 checks.
+    expect(report.categories.map((c) => c.id)).toEqual([...AUDIT_CATEGORY_IDS])
+    expect(totalChecks(report)).toBe(CHECK_COUNT)
+    // A degraded page still earns a partial (not zero) auto-audit score ≤ 60.
+    expect(report.score.total).toBe(report.score.auditScore)
+    expect(report.score.total).toBeGreaterThan(0)
+    expect(report.score.total).toBeLessThanOrEqual(AUDIT_MAX_SCORE)
+  })
+
+  it('reports the identical category/check shape whether or not AI succeeds', async () => {
+    const load = { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } }
+    const done = resultOf(
+      await collect({ load, evaluateAi: successEvaluator }),
+    ) as AnalysisReport
+    const partial = resultOf(
+      await collect({ load }, { url: PUBLIC_URL }),
+    ) as AnalysisReport
+
+    // The audit half is identical across branches — only the AI half differs.
+    expect(partial.categories).toEqual(done.categories)
+    expect(partial.score.auditScore).toBe(done.score.auditScore)
   })
 })
 
