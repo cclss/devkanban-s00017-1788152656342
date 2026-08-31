@@ -232,6 +232,18 @@ export const LLM_AXIS_LABELS: Readonly<Record<LlmAxisId, string>> = {
   cta: 'CTA',
 } as const
 
+/**
+ * Per-axis maximum points. The three axes split the 40-point AI rubric as
+ * visual 16 / copy 14 / cta 10 (summing to {@link LLM_MAX_SCORE}). This mirrors
+ * the distribution already used by the confirmed report fixtures, so the real
+ * evaluator scores each axis on the same ceiling the report view renders.
+ */
+export const LLM_AXIS_MAX_SCORES: Readonly<Record<LlmAxisId, number>> = {
+  visual: 16,
+  copy: 14,
+  cta: 10,
+} as const
+
 /** Auto-audit maximum (points contributed by the 5 categories combined). */
 export const AUDIT_MAX_SCORE = 60
 

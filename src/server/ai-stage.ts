@@ -18,7 +18,12 @@
  * Boundary: standalone backend module reusing only `core/report` types and the
  * `analysis-copy` failure-reason vocabulary. It performs no I/O itself.
  */
-import { LLM_AXIS_IDS, LLM_MAX_SCORE, type LlmAxis } from '../core/report'
+import {
+  LLM_AXIS_IDS,
+  LLM_MAX_SCORE,
+  type LlmAxis,
+  type Screenshot,
+} from '../core/report'
 import type { AiFailureReason } from './analysis-copy'
 
 /** Input handed to an {@link AiEvaluator}. */
@@ -31,6 +36,11 @@ export interface AiEvaluatorInput {
   apiKey?: string
   /** Selected model id (e.g. `claude-sonnet-5`), when chosen. */
   model?: string
+  /**
+   * Captured page renderings, when available. The real evaluator sends these as
+   * image blocks alongside the page text; absence is fine (text-only rubric).
+   */
+  screenshots?: Screenshot[]
 }
 
 /** A successful AI evaluation: the scored axes and their combined AI score. */

@@ -1,0 +1,297 @@
+/**
+ * The real AI-rubric evaluator: a Claude `claude-sonnet-5` call behind the
+ * injected {@link AiEvaluator} boundary.
+ *
+ * Given the page text (and screenshots when present), it asks Claude to score
+ * the landing page on the three Korean rubric axes — 비주얼 / 카피 / CTA — and to
+ * reply with a strict JSON envelope. The reply is parsed and validated into
+ * {@link LlmAxis}[]; a malformed reply is retried exactly once before the stage
+ * degrades to a typed `parse-failure`. Provider failures map to typed reasons so
+ * the pipeline can turn any of them into a `done-partial` report: no key →
+ * `missing-key`, an auth rejection → `invalid-key`, a 429 → `rate-limit`.
+ *
+ * Key hygiene (spec "API 키 무로깅"): the API key is only ever handed to the
+ * injected message-create function to construct the client. It is never written
+ * into the request body, the rubric prompt, a log line, or any returned/thrown
+ * value — this module returns reason *codes*, never the key.
+ *
+ * Boundary: standalone backend evaluator. It composes `ai-stage` / `core/report`
+ * types and the Anthropic SDK behind an injected `createMessage` function, so
+ * tests exercise every branch with a mocked SDK and no network. It has no React
+ * or component dependencies and performs no I/O of its own beyond that call.
+ */
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  LLM_AXIS_IDS,
+  LLM_AXIS_LABELS,
+  LLM_AXIS_MAX_SCORES,
+  type LlmAxis,
+  type LlmAxisId,
+  type Screenshot,
+} from '../core/report'
+import type { AiFailureReason } from './analysis-copy'
+import {
+  hasApiKey,
+  sumAxisScores,
+  type AiEvaluation,
+  type AiEvaluator,
+  type AiEvaluatorInput,
+} from './ai-stage'
+
+/** The Claude model this evaluator scores with, unless the input overrides it. */
+export const DEFAULT_AI_MODEL = 'claude-sonnet-5'
+
+/** Output cap for the rubric reply — a small JSON envelope needs little room. */
+const MAX_TOKENS = 2048
+
+/**
+ * The injected message-create boundary. Given the API key and a Messages
+ * request, it returns Claude's reply. The default builds a per-call client from
+ * the key; tests inject a stub so no network (and no real key) is involved.
+ *
+ * The key is a *separate* argument — never part of `params` — so it stays out of
+ * anything that could be logged or echoed.
+ */
+export type AnthropicMessageCreate = (
+  apiKey: string,
+  params: Anthropic.MessageCreateParamsNonStreaming,
+) => Promise<Anthropic.Message>
+
+/** Default boundary: construct a client from the key and call the real API. */
+const defaultCreateMessage: AnthropicMessageCreate = (apiKey, params) =>
+  new Anthropic({ apiKey }).messages.create(params)
+
+/**
+ * The Korean rubric system prompt. Tone: a concise, professional landing-page
+ * quality reviewer that speaks plain Korean (평서형 `합니다.` 종결) and returns
+ * *only* the JSON envelope — no prose, no code fences. The three axes and their
+ * point ceilings match {@link LLM_AXIS_MAX_SCORES}.
+ */
+export const RUBRIC_SYSTEM_PROMPT = [
+  '당신은 랜딩페이지 품질을 평가하는 전문가입니다.',
+  '제공된 페이지 텍스트와 스크린샷(있는 경우)을 근거로 아래 3개 축을 평가합니다.',
+  '',
+  '평가 축과 만점:',
+  `- visual(비주얼): ${LLM_AXIS_MAX_SCORES.visual}점 만점. 레이아웃·여백·타이포그래피·시각적 위계를 평가합니다.`,
+  `- copy(카피): ${LLM_AXIS_MAX_SCORES.copy}점 만점. 헤드라인·가치 제안·문구의 명확성과 설득력을 평가합니다.`,
+  `- cta(CTA): ${LLM_AXIS_MAX_SCORES.cta}점 만점. 행동 유도 문구의 명확성·노출·반복 배치를 평가합니다.`,
+  '',
+  '각 축의 score는 0 이상 만점 이하의 정수입니다.',
+  'comment는 한국어 한 문장 평가이고, suggestions는 한국어 개선 제안 문자열 배열입니다.',
+  '',
+  '반드시 아래 형식의 JSON 하나만 출력합니다. 코드펜스나 다른 설명 문장을 덧붙이지 않습니다.',
+  '{"axes":[' +
+    '{"id":"visual","score":0,"comment":"","suggestions":[]},' +
+    '{"id":"copy","score":0,"comment":"","suggestions":[]},' +
+    '{"id":"cta","score":0,"comment":"","suggestions":[]}]}',
+].join('\n')
+
+/** Splits a `data:` URL into its media type and base64 payload, or `null`. */
+function parseDataUrl(
+  dataUrl: string,
+): { mediaType: string; data: string } | null {
+  const match = /^data:([^;,]+);base64,(.*)$/s.exec(dataUrl)
+  if (!match) return null
+  const mediaType = match[1]
+  const data = match[2]
+  if (!data) return null
+  return { mediaType, data }
+}
+
+/** Anthropic image media types accepted for screenshot blocks. */
+type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+const IMAGE_MEDIA_TYPES: readonly ImageMediaType[] = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]
+
+/** Builds an image content block for a screenshot, skipping unusable ones. */
+function screenshotBlock(
+  shot: Screenshot,
+): Anthropic.ImageBlockParam | null {
+  const parsed = parseDataUrl(shot.dataUrl)
+  if (!parsed) return null
+  if (!IMAGE_MEDIA_TYPES.includes(parsed.mediaType as ImageMediaType)) {
+    return null
+  }
+  return {
+    type: 'image',
+    source: {
+      type: 'base64',
+      media_type: parsed.mediaType as ImageMediaType,
+      data: parsed.data,
+    },
+  }
+}
+
+/** Assembles the user message: screenshots first, then the page-text prompt. */
+function buildUserContent(input: AiEvaluatorInput): Anthropic.ContentBlockParam[] {
+  const blocks: Anthropic.ContentBlockParam[] = []
+  for (const shot of input.screenshots ?? []) {
+    const block = screenshotBlock(shot)
+    if (block) {
+      blocks.push({
+        type: 'text',
+        text: `다음은 ${shot.viewport === 'mobile' ? '모바일' : '데스크톱'} 화면 스크린샷입니다.`,
+      })
+      blocks.push(block)
+    }
+  }
+  blocks.push({
+    type: 'text',
+    text: [
+      `평가 대상 URL: ${input.url}`,
+      '',
+      '페이지 텍스트(HTML):',
+      input.html,
+      '',
+      '위 자료를 근거로 visual·copy·cta 세 축을 평가해 JSON 하나만 출력하세요.',
+    ].join('\n'),
+  })
+  return blocks
+}
+
+/** Builds the non-streaming Messages request for this input. */
+function buildRequest(
+  input: AiEvaluatorInput,
+): Anthropic.MessageCreateParamsNonStreaming {
+  const model =
+    typeof input.model === 'string' && input.model.trim() !== ''
+      ? input.model
+      : DEFAULT_AI_MODEL
+  return {
+    model,
+    max_tokens: MAX_TOKENS,
+    system: RUBRIC_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: buildUserContent(input) }],
+  }
+}
+
+/** Concatenates the text blocks of a Claude reply. */
+function replyText(message: Anthropic.Message): string {
+  return message.content
+    .filter(
+      (block): block is Anthropic.TextBlock => block.type === 'text',
+    )
+    .map((block) => block.text)
+    .join('\n')
+    .trim()
+}
+
+/** Strips a leading/trailing markdown code fence if the model added one. */
+function stripCodeFence(text: string): string {
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(text.trim())
+  return fenced ? fenced[1].trim() : text.trim()
+}
+
+/** Coerces an unknown to a finite integer within `[0, max]`, or `null`. */
+function clampScore(value: unknown, max: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  const rounded = Math.round(value)
+  if (rounded < 0) return 0
+  if (rounded > max) return max
+  return rounded
+}
+
+/** Coerces an unknown to an array of non-empty trimmed strings. */
+function toSuggestions(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item !== '')
+}
+
+/**
+ * Parses and validates a rubric reply into the three {@link LlmAxis} entries, in
+ * canonical order. Returns `null` on any structural problem (not JSON, missing
+ * axis, non-numeric score) so the caller can retry / degrade to `parse-failure`.
+ */
+export function parseRubricAxes(text: string): LlmAxis[] | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stripCodeFence(text))
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null
+  const rawAxes = (parsed as { axes?: unknown }).axes
+  if (!Array.isArray(rawAxes)) return null
+
+  const byId = new Map<LlmAxisId, Record<string, unknown>>()
+  for (const entry of rawAxes) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const record = entry as Record<string, unknown>
+    const id = record.id
+    if (
+      typeof id === 'string' &&
+      (LLM_AXIS_IDS as readonly string[]).includes(id)
+    ) {
+      byId.set(id as LlmAxisId, record)
+    }
+  }
+
+  const axes: LlmAxis[] = []
+  for (const id of LLM_AXIS_IDS) {
+    const record = byId.get(id)
+    if (!record) return null
+    const maxScore = LLM_AXIS_MAX_SCORES[id]
+    const score = clampScore(record.score, maxScore)
+    if (score === null) return null
+    axes.push({
+      id,
+      label: LLM_AXIS_LABELS[id],
+      score,
+      maxScore,
+      comment: typeof record.comment === 'string' ? record.comment.trim() : '',
+      suggestions: toSuggestions(record.suggestions),
+    })
+  }
+  return axes
+}
+
+/** Maps a thrown provider error to a typed AI-failure reason (never the key). */
+function mapError(error: unknown): AiFailureReason {
+  if (
+    error instanceof Anthropic.RateLimitError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      (error as { status?: unknown }).status === 429)
+  ) {
+    return 'rate-limit'
+  }
+  // Auth rejections and any other provider/model failure degrade to invalid-key
+  // (the partial-result principle: the AI step is non-fatal).
+  return 'invalid-key'
+}
+
+/**
+ * Creates a real {@link AiEvaluator} backed by Claude. `createMessage` is
+ * injected so tests supply a stub; production uses {@link defaultCreateMessage}.
+ */
+export function createClaudeAiEvaluator(
+  createMessage: AnthropicMessageCreate = defaultCreateMessage,
+): AiEvaluator {
+  return async (input: AiEvaluatorInput): Promise<AiEvaluation> => {
+    if (!hasApiKey(input.apiKey)) {
+      return { ok: false, reason: 'missing-key' }
+    }
+    const apiKey = input.apiKey as string
+    const request = buildRequest(input)
+    try {
+      // One initial attempt, then exactly one retry on a parse failure only.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const message = await createMessage(apiKey, request)
+        const axes = parseRubricAxes(replyText(message))
+        if (axes) {
+          return { ok: true, axes, llmScore: sumAxisScores(axes) }
+        }
+      }
+      return { ok: false, reason: 'parse-failure' }
+    } catch (error) {
+      return { ok: false, reason: mapError(error) }
+    }
+  }
+}
