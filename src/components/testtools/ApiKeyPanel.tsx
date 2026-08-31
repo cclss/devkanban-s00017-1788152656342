@@ -1,0 +1,204 @@
+/**
+ * Test-tool: API key + provider/model entry (Design §테스트 도구 패널).
+ *
+ * This is mockup scaffolding, not a real product surface: the real user's key
+ * entry is stubbed here so the wiring can be exercised by hand. The panel lets a
+ * tester pick a provider/model, type a masked key, and jump the key to one of the
+ * three "permission" presets — 키 없음 / 유효한 키 / 무효한 키. Every change is
+ * mirrored to the three owned localStorage keys on the spot (no save button), and
+ * the three keys are read back on mount so a revisit is pre-filled.
+ *
+ * The key affects nothing in the flow yet (there is no real `/api/analyze`); AI
+ * failure is simulated separately by the stage simulator. So this panel is
+ * self-contained: it owns its own form state + persistence and needs no props.
+ *
+ * Boundary: presentational + local persistence via the storage adapter. It holds
+ * only its own form state; all copy is co-located Korean domain content.
+ */
+import { useEffect, useId, useState } from 'react'
+import {
+  API_KEY_STORAGE_KEYS,
+  readStored,
+  writeStored,
+} from './api-key-storage'
+
+/** Provider options. Anthropic only for the MVP (Design/§가정). */
+export const API_KEY_PROVIDERS = [{ id: 'anthropic', label: 'Anthropic' }] as const
+
+/** Model options (Design/§가정: no date-suffixed ids). */
+export const API_KEY_MODELS = [
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5' },
+] as const
+
+/**
+ * The three "permission" presets the key buttons apply. `none` clears the key
+ * (missing-key case), `valid` / `invalid` set demo strings of the right shape so
+ * the tester can drive the valid vs. invalid-key branches by eye.
+ */
+export const API_KEY_PRESETS = {
+  none: '',
+  valid: 'sk-ant-valid-demo-0000000000',
+  invalid: 'invalid-demo-key',
+} as const
+
+/** Korean, user-facing copy for the panel. Exported so tests assert one source. */
+export const API_KEY_PANEL_STRINGS = {
+  heading: 'API 키 설정',
+  providerLabel: '공급자',
+  modelLabel: '모델',
+  keyLabel: 'API 키',
+  keyPlaceholder: 'sk-...',
+  presetGroupLabel: '키 프리셋',
+  presetNone: '키 없음',
+  presetValid: '유효한 키',
+  presetInvalid: '무효한 키',
+} as const
+
+const DEFAULT_PROVIDER = API_KEY_PROVIDERS[0].id
+const DEFAULT_MODEL = API_KEY_MODELS[0].id
+
+/**
+ * @param props Optional `onChange` fired after each field change with the whole
+ *   current form value, purely so a host/test can observe changes. The panel is
+ *   otherwise self-contained (state + localStorage).
+ */
+export interface ApiKeyPanelProps {
+  onChange?: (value: {
+    provider: string
+    model: string
+    apiKey: string
+  }) => void
+}
+
+export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
+  // Seed from localStorage on first render so a revisit is pre-filled; fall back
+  // to the first provider/model and an empty key.
+  const [provider, setProvider] = useState(
+    () => readStored(API_KEY_STORAGE_KEYS.provider) ?? DEFAULT_PROVIDER,
+  )
+  const [model, setModel] = useState(
+    () => readStored(API_KEY_STORAGE_KEYS.model) ?? DEFAULT_MODEL,
+  )
+  const [apiKey, setApiKey] = useState(
+    () => readStored(API_KEY_STORAGE_KEYS.apiKey) ?? '',
+  )
+
+  const providerId = useId()
+  const modelId = useId()
+  const keyId = useId()
+
+  // Persist whatever was seeded (including the defaults) once on mount, so the
+  // three keys always exist after the panel has been shown.
+  useEffect(() => {
+    writeStored(API_KEY_STORAGE_KEYS.provider, provider)
+    writeStored(API_KEY_STORAGE_KEYS.model, model)
+    writeStored(API_KEY_STORAGE_KEYS.apiKey, apiKey)
+    // Mount-only sync: subsequent writes happen in the change handlers below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const emitChange = (next: { provider: string; model: string; apiKey: string }) => {
+    onChange?.(next)
+  }
+
+  const handleProvider = (value: string) => {
+    setProvider(value)
+    writeStored(API_KEY_STORAGE_KEYS.provider, value)
+    emitChange({ provider: value, model, apiKey })
+  }
+
+  const handleModel = (value: string) => {
+    setModel(value)
+    writeStored(API_KEY_STORAGE_KEYS.model, value)
+    emitChange({ provider, model: value, apiKey })
+  }
+
+  const handleKey = (value: string) => {
+    setApiKey(value)
+    writeStored(API_KEY_STORAGE_KEYS.apiKey, value)
+    emitChange({ provider, model, apiKey: value })
+  }
+
+  return (
+    <section className="testtools__group" aria-label={API_KEY_PANEL_STRINGS.heading}>
+      <h3 className="testtools__group-title">{API_KEY_PANEL_STRINGS.heading}</h3>
+
+      <div className="testtools__field">
+        <label className="testtools__label" htmlFor={providerId}>
+          {API_KEY_PANEL_STRINGS.providerLabel}
+        </label>
+        <select
+          id={providerId}
+          className="field-input testtools__select"
+          value={provider}
+          onChange={(event) => handleProvider(event.target.value)}
+        >
+          {API_KEY_PROVIDERS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="testtools__field">
+        <label className="testtools__label" htmlFor={modelId}>
+          {API_KEY_PANEL_STRINGS.modelLabel}
+        </label>
+        <select
+          id={modelId}
+          className="field-input testtools__select"
+          value={model}
+          onChange={(event) => handleModel(event.target.value)}
+        >
+          {API_KEY_MODELS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="testtools__field">
+        <label className="testtools__label" htmlFor={keyId}>
+          {API_KEY_PANEL_STRINGS.keyLabel}
+        </label>
+        {/* Masked so the key is never shown in plain text on screen. */}
+        <input
+          id={keyId}
+          type="password"
+          className="field-input testtools__input"
+          value={apiKey}
+          placeholder={API_KEY_PANEL_STRINGS.keyPlaceholder}
+          autoComplete="off"
+          onChange={(event) => handleKey(event.target.value)}
+        />
+      </div>
+
+      <div className="testtools__buttons" role="group" aria-label={API_KEY_PANEL_STRINGS.presetGroupLabel}>
+        <button
+          type="button"
+          className="btn testtools__btn"
+          onClick={() => handleKey(API_KEY_PRESETS.none)}
+        >
+          {API_KEY_PANEL_STRINGS.presetNone}
+        </button>
+        <button
+          type="button"
+          className="btn testtools__btn"
+          onClick={() => handleKey(API_KEY_PRESETS.valid)}
+        >
+          {API_KEY_PANEL_STRINGS.presetValid}
+        </button>
+        <button
+          type="button"
+          className="btn testtools__btn"
+          onClick={() => handleKey(API_KEY_PRESETS.invalid)}
+        >
+          {API_KEY_PANEL_STRINGS.presetInvalid}
+        </button>
+      </div>
+    </section>
+  )
+}

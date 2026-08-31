@@ -1,177 +1,79 @@
-import { useCallback, useMemo } from 'react'
-import AppHeader from './components/AppHeader'
-import Toolbar from './components/Toolbar'
-import Dropzone from './components/Dropzone'
-import PageGrid from './components/PageGrid'
-import { ThumbnailRenderer } from './core/thumbnail'
-import { mergePages } from './core/merge'
-import { extractPages, splitByRanges, splitEveryNPages } from './core/split'
-import { buildExportFilename, downloadBlob, downloadPdf } from './core/download'
-import { zipFiles } from './core/zip'
-import { parseRangeGroups, planSplitDownload } from './core/split-plan'
-import type { SourceFile, WorkspacePage } from './core/types'
-import { useSourceFiles } from './state/useSourceFiles'
-import { useWorkspacePages } from './state/useWorkspacePages'
-import { strings } from './strings'
+/**
+ * Landing-page grader shell.
+ *
+ * Assembles the whole screen: the test-tools panel on top, then the three grader
+ * blocks stacked vertically — {@link UrlForm} → {@link ProgressStepper} →
+ * {@link ReportView}. Every block reads one value, the {@link useStage} `Stage`
+ * SSoT (mirrored to `body[data-stage]`), so they can never drift apart; this
+ * component only holds that one hook plus the conflict-simulation toggle and
+ * wires the pieces together.
+ *
+ * Wiring rules (Design §상태 전이 규칙):
+ * - "진단 시작" starts a run from `idle`/terminal via the stage machine; while the
+ *   conflict simulator is set to "이미 분석 진행 중" the start is refused with a
+ *   `conflict` result so the URL form shows the client-side block inline — no
+ *   request is ever sent (there is no real request in this grain anyway).
+ * - The stage simulator drives the machine to any stage by walking the legal
+ *   edges ({@link planStagePath}) one guarded transition at a time.
+ * - The report shown is derived purely from the stage: terminal stages resolve to
+ *   the matching demo report, every other stage to `null` (nothing rendered).
+ *
+ * Out of scope for this grain: any real `/api/analyze` call. The flow is exercised
+ * entirely through the test-tools simulator.
+ */
+import { useCallback, useState } from 'react'
+import UrlForm from './components/UrlForm'
+import ProgressStepper from './components/ProgressStepper'
+import ReportView from './components/ReportView'
+import TestToolsPanel from './components/testtools/TestToolsPanel'
+import type { ConflictMode } from './components/testtools/StageSimulator'
+import { planStagePath } from './components/testtools/stage-path'
+import { demoReportFor } from './components/testtools/demo-reports'
+import { useStage } from './state/useStage'
+import type { Stage, StartResult } from './state/stage'
 import './styles/App.css'
 
-/**
- * Workspace screen.
- * Owns the `sourceFiles` state, derives the flat `pages` array from it, and
- * renders the page grid below the dropzone. A single
- * {@link ThumbnailRenderer} is shared across every card so each source document
- * is parsed once regardless of how many of its pages are on screen. Export is
- * wired through the toolbar above the workspace.
- */
 export default function App() {
-  const { sourceFiles, rejected, isLoading, addFiles, dismissRejected } =
-    useSourceFiles()
+  const { stage, start, reset, transitionTo } = useStage()
+  const [conflictMode, setConflictMode] = useState<ConflictMode>('none')
 
-  // One rasteriser for the whole workspace — its per-source document cache is
-  // what keeps a many-page file from being re-parsed per thumbnail.
-  const renderer = useMemo(() => new ThumbnailRenderer(), [])
+  // "진단 시작": normally hand off to the stage machine. When the conflict
+  // simulator is armed, refuse with a conflict so the URL form surfaces the
+  // client-side "이미 분석 진행 중" block — mirroring a real in-progress refusal.
+  const handleStart = useCallback((): StartResult => {
+    if (conflictMode === 'in-progress') {
+      return { stage, started: false, conflict: true }
+    }
+    return start()
+  }, [conflictMode, stage, start])
 
-  // The SSoT `pages` array (order/rotation/deletion) plus its mutations and the
-  // selection set. Drag reordering commits through `reorder`; the per-card
-  // rotate/delete/select controls commit through the rest.
-  const { pages, selected, reorder, rotate, delete: deletePages, toggleSelect } =
-    useWorkspacePages(sourceFiles)
-
-  // A card's delete button removes exactly that one page; the SSoT `delete`
-  // takes an id iterable, so wrap the single id.
-  const deleteOne = useCallback(
-    (id: string) => deletePages([id]),
-    [deletePages],
-  )
-
-  // Export All (merge): assemble the current `pages` (order +
-  // rotation) into one PDF and hand the bytes to the client-side download. This
-  // "how" lives here in the UI-owning layer; the toolbar owns the "when"
-  // (button-state, in-progress, inline error). Rejects propagate so the toolbar
-  // can surface the failure. All bytes stay in the browser.
-  const exportAll = useCallback(
-    async (pagesToExport: WorkspacePage[], files: SourceFile[]) => {
-      const bytes = await mergePages(pagesToExport, files)
-      const filename = buildExportFilename(files.map((file) => file.name))
-      downloadPdf(bytes, filename)
-    },
-    [],
-  )
-
-  // The checked pages in workspace order — filtering the ordered SSoT `pages`
-  // by the selection set preserves output order. This is the
-  // exact subset Export Selected Pages assembles.
-  const selectedPages = useMemo(
-    () => pages.filter((page) => selected.has(page.id)),
-    [pages, selected],
-  )
-
-  // Export Selected Pages (extract): assemble only the checked pages
-  // into a single PDF via the pure `extractPages` core, then download. Mirrors
-  // `exportAll`'s split of concerns — this "how" lives here, the toolbar owns
-  // the "when". The file is named after the source document(s) the selection
-  // draws from, falling back to a generic name when no source name is usable. Rejects
-  // propagate so the toolbar can surface the inline error.
-  const exportSelected = useCallback(
-    async (pagesToExport: WorkspacePage[], files: SourceFile[]) => {
-      const bytes = await extractPages(pagesToExport, files)
-      const nameById = new Map(files.map((file) => [file.id, file.name]))
-      // Distinct origin file names in first-seen order; blanks are skipped so
-      // buildExportFilename applies the selected-pages fallback when none remain.
-      const sourceNames: string[] = []
-      const seen = new Set<string>()
-      for (const page of pagesToExport) {
-        if (seen.has(page.sourceFileId)) continue
-        seen.add(page.sourceFileId)
-        const name = nameById.get(page.sourceFileId)
-        if (name) sourceNames.push(name)
+  // Force the machine to `target` by walking the shortest sequence of legal
+  // edges from the current stage. Each guarded `transitionTo` is a functional
+  // update, so the sequence compounds to land exactly on `target`.
+  const forceStage = useCallback(
+    (target: Stage) => {
+      for (const next of planStagePath(stage, target)) {
+        transitionTo(next)
       }
-      const filename = buildExportFilename(sourceNames, {
-        fallback: strings.filenames.selectedPagesFallback,
-      })
-      downloadPdf(bytes, filename)
     },
-    [],
+    [stage, transitionTo],
   )
 
-  // Executes a split result: one part downloads as a plain PDF,
-  // several bundle into one zip. The single-vs-zip decision and all naming is the
-  // pure `planSplitDownload`; this wiring only performs the plan's I/O — zip the
-  // entries when needed and hand the Blob/bytes to the client-side download. All
-  // bytes stay in the browser. Shared by both split flows.
-  const deliverSplit = useCallback(
-    async (parts: Uint8Array[], files: SourceFile[]) => {
-      const plan = planSplitDownload(parts, files)
-      if (plan.kind === 'single') {
-        downloadPdf(plan.bytes, plan.filename)
-        return
-      }
-      const blob = await zipFiles(plan.entries)
-      downloadBlob(blob, plan.filename)
-    },
-    [],
-  )
-
-  // Split by N Pages: chunk the workspace into fixed-size PDFs
-  // via the pure `splitEveryNPages`, then deliver (single PDF or zip). Rejects
-  // propagate so the toolbar surfaces the inline error.
-  const exportSplitByCount = useCallback(
-    async (count: number, pagesToSplit: WorkspacePage[], files: SourceFile[]) => {
-      const parts = await splitEveryNPages(pagesToSplit, files, count)
-      await deliverSplit(parts, files)
-    },
-    [deliverSplit],
-  )
-
-  // Split by Range: the toolbar hands us the validated raw range
-  // string; reconstruct one index group per comma segment (`parseRangeGroups`),
-  // split into one PDF per group, then deliver (single PDF or zip). Rejects
-  // propagate so the toolbar surfaces the inline error.
-  const exportSplitByRanges = useCallback(
-    async (
-      rangeInput: string,
-      pagesToSplit: WorkspacePage[],
-      files: SourceFile[],
-    ) => {
-      const groups = parseRangeGroups(rangeInput, pagesToSplit.length)
-      const parts = await splitByRanges(pagesToSplit, files, groups)
-      await deliverSplit(parts, files)
-    },
-    [deliverSplit],
-  )
+  // The report is a pure function of the stage — no separate report state to keep
+  // in sync. Terminal stages resolve to their demo report; all others to null.
+  const report = demoReportFor(stage)
 
   return (
-    <div className="app-shell">
-      <AppHeader />
-      <Toolbar
-        pages={pages}
-        selectedPages={selectedPages}
-        sourceFiles={sourceFiles}
-        onExportAll={exportAll}
-        onExportSelected={exportSelected}
-        onSplitByCount={exportSplitByCount}
-        onSplitByRanges={exportSplitByRanges}
-        selectedCount={selected.size}
+    <div className="grader-layout">
+      <TestToolsPanel
+        stage={stage}
+        onForceStage={forceStage}
+        conflictMode={conflictMode}
+        onConflictModeChange={setConflictMode}
       />
-      <main className="workspace">
-        <Dropzone
-          sourceFiles={sourceFiles}
-          rejected={rejected}
-          isLoading={isLoading}
-          onAddFiles={addFiles}
-          onDismissRejected={dismissRejected}
-        />
-        <PageGrid
-          sourceFiles={sourceFiles}
-          pages={pages}
-          renderer={renderer}
-          onReorder={reorder}
-          selected={selected}
-          onRotate={rotate}
-          onDelete={deleteOne}
-          onToggleSelect={toggleSelect}
-        />
-      </main>
+      <UrlForm stage={stage} onStart={handleStart} onReset={reset} />
+      <ProgressStepper stage={stage} />
+      <ReportView report={report} />
     </div>
   )
 }

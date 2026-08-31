@@ -1,114 +1,109 @@
 // @vitest-environment jsdom
 /**
- * Smoke test for the core workspace flow: load a file → show the page grid →
- * enable the export button.
+ * Integration (smoke) test for the assembled grader shell.
  *
- * This is the UI-integration (smoke) layer, not a unit test — it renders the
- * whole {@link App} and drives the real load → derive → render wiring end to
- * end, asserting only the observable transition a user sees. The two heavy
- * boundaries are isolated so the test stays fast and deterministic:
+ * Renders the whole {@link App} and drives the real wiring a tester meets: the
+ * test-tools panel on top, then UrlForm → ProgressStepper → ReportView, all keyed
+ * off the one `body[data-stage]` SSoT. It asserts the observable behaviour the
+ * grain promises — the simulator transitions `data-stage` and the three blocks
+ * per the rules, the conflict simulator blocks a start client-side, and the API
+ * key panel persists its three localStorage keys.
  *
- * - `./core/pdf-source` `loadSourceFile` is mocked to return a ready
- *   {@link SourceFile} (2 pages) — no real pdf-lib parsing of dummy bytes.
- * - `./core/thumbnail` `ThumbnailRenderer` is stubbed — no pdf.js worker /
- *   canvas rasterisation (which jsdom cannot do).
- *
- * Removing either mock (or breaking the load→grid→enable wiring) makes the
- * assertions fail: dummy bytes would be rejected as corrupt, so no pages would
- * appear and Export All would stay disabled.
+ * No heavy boundaries need mocking here: the grader flow is pure state + demo
+ * data (no real `/api/analyze` in this grain).
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-
-// Stub the pdf.js-backed rasteriser: App constructs one ThumbnailRenderer and
-// hands it to every card. The dummy never touches pdf.js or a real canvas.
-vi.mock('./core/thumbnail', () => {
-  class ThumbnailRenderer {
-    async render() {
-      return { cacheKey: 'k', dataUrl: 'data:image/png;base64,', width: 1, height: 1 }
-    }
-    async forget() {}
-    get cachedDocumentCount() {
-      return 0
-    }
-  }
-  return { ThumbnailRenderer }
-})
-
-// Stub the loader so a dummy File resolves to a valid 2-page SourceFile without
-// any real PDF parsing. `useSourceFiles` imports this same module.
-vi.mock('./core/pdf-source', () => ({
-  loadSourceFile: vi.fn(
-    async (input: File | ArrayBuffer, options: { id?: string; name?: string } = {}) => ({
-      ok: true,
-      file: {
-        id: options.id ?? 'src-1',
-        name: options.name ?? (input instanceof ArrayBuffer ? 'document.pdf' : input.name),
-        bytes: new ArrayBuffer(0),
-        pageCount: 2,
-      },
-    }),
-  ),
-}))
-
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import App from './App'
-
-// jsdom has no IntersectionObserver; the cards degrade gracefully without it,
-// but a no-op stub keeps the lazy-render effect from firing so the smoke test
-// stays focused on the load→grid→enable transition.
-class NoopIntersectionObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords() {
-    return []
-  }
-}
+import { URL_FORM_STRINGS } from './components/UrlForm'
+import { REPORT_VIEW_STRINGS } from './components/ReportView'
+import { PROGRESS_STEPPER_LABEL } from './components/ProgressStepper'
+import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
 
 afterEach(() => {
   cleanup()
-  vi.unstubAllGlobals()
+  document.body.removeAttribute('data-stage')
 })
 
-function pdfFile(name = 'sample.pdf'): File {
-  return new File(['%PDF-1.4 dummy'], name, { type: 'application/pdf' })
+beforeEach(() => {
+  window.localStorage.clear()
+})
+
+function stageOf(): string | null {
+  return document.body.getAttribute('data-stage')
 }
 
-describe('App workspace smoke flow', () => {
-  it('goes Export All disabled → load file → grid shown → button enabled', async () => {
-    vi.stubGlobal('IntersectionObserver', NoopIntersectionObserver)
+describe('App grader shell', () => {
+  it('assembles the test-tools panel above the three blocks and starts idle', () => {
+    render(<App />)
+    // Test tools present.
+    expect(screen.getByText('테스트 도구')).toBeDefined()
+    // The three blocks: URL start button, the stepper region, and no report yet.
+    expect(screen.getByRole('button', { name: URL_FORM_STRINGS.start })).toBeDefined()
+    expect(screen.getByRole('list', { name: PROGRESS_STEPPER_LABEL })).toBeDefined()
+    expect(stageOf()).toBe('idle')
+    expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
+  })
 
-    const { container } = render(<App />)
+  it('persists the three API-key localStorage keys on mount', () => {
+    render(<App />)
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.provider)).not.toBeNull()
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).not.toBeNull()
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe('')
+  })
 
-    // Before any file loads, the merge action is disabled and no grid exists.
-    const exportButton = screen.getByRole('button', {
-      name: 'Export All',
-    }) as HTMLButtonElement
-    expect(exportButton.disabled).toBe(true)
-    expect(screen.queryByText(/^\d+ pages$/)).toBeNull()
+  it('forcing 완료(정상) drives data-stage to done and shows the report', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+    expect(stageOf()).toBe('done')
+    // Report gauge + download appear; the URL form flips to the reset control.
+    expect(screen.getByText(REPORT_VIEW_STRINGS.totalHeading)).toBeDefined()
+    expect(screen.getByRole('button', { name: REPORT_VIEW_STRINGS.download })).toBeDefined()
+    expect(screen.getByRole('button', { name: URL_FORM_STRINGS.reset })).toBeDefined()
+  })
 
-    // The hidden file input inside the PDF drop surface.
-    const input = container.querySelector(
-      'input[type="file"][accept="application/pdf"]',
-    ) as HTMLInputElement
-    expect(input).not.toBeNull()
+  it('forcing 완료(부분결과) shows the 60-point partial note', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '완료(AI 실패·부분결과)' }))
+    expect(stageOf()).toBe('done-partial')
+    expect(screen.getByText(REPORT_VIEW_STRINGS.partialScaleNote)).toBeDefined()
+  })
 
-    // Load one dummy PDF through the (mocked) loader.
-    await act(async () => {
-      fireEvent.change(input, { target: { files: [pdfFile()] } })
+  it('forcing 에러(로드 실패) hides the report gauge and shows only the error card', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '에러(로드 실패)' }))
+    expect(stageOf()).toBe('error-load')
+    expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
+    expect(screen.getByRole('region', { name: REPORT_VIEW_STRINGS.errorLabel })).toBeDefined()
+  })
+
+  it('resets back to idle from a terminal via 대기', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+    expect(stageOf()).toBe('done')
+    fireEvent.click(screen.getByRole('button', { name: '대기' }))
+    expect(stageOf()).toBe('idle')
+    expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
+  })
+
+  it('starts a real run from idle: 진단 시작 moves data-stage to load', () => {
+    render(<App />)
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
     })
+    fireEvent.click(screen.getByRole('button', { name: URL_FORM_STRINGS.start }))
+    expect(stageOf()).toBe('load')
+  })
 
-    // The page grid appears with a heading reflecting the derived page count.
-    // Queried by role so it can't collide with the Dropzone per-file page-count
-    // badge, which shares the same "N pages" wording in a different region.
-    expect(
-      await screen.findByRole('heading', { name: '2 pages' }),
-    ).toBeDefined()
-
-    // …and the merge action has transitioned to enabled.
-    const exportAfter = screen.getByRole('button', {
-      name: 'Export All',
-    }) as HTMLButtonElement
-    expect(exportAfter.disabled).toBe(false)
+  it('conflict simulation blocks a start client-side with an inline error', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '이미 분석 진행 중' }))
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: URL_FORM_STRINGS.start }))
+    // No transition happened and the client-side conflict error is shown.
+    expect(stageOf()).toBe('idle')
+    expect(screen.getByRole('alert').textContent).toBe(URL_FORM_STRINGS.conflictError)
   })
 })

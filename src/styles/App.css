@@ -1289,3 +1289,71 @@
     align-items: flex-start;
   }
 }
+
+/* ── Test-tools panel (grain-7) ─────────────────────────────────
+ * Mockup scaffolding above the three grader blocks. Colors/typography/spacing/
+ * radius come from tokens; layout properties (flex/grid/wrap) are implementation
+ * settings. Reuses the shared `.grader-card--muted` surface and `.btn`. */
+.testtools {
+  /* details/summary disclosure; the muted card supplies the surface tokens. */
+}
+
+.testtools__summary {
+  cursor: pointer;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+}
+
+.testtools__note {
+  margin: var(--space-sm) 0 var(--space-md);
+  font-size: var(--text-size-xs);
+  color: var(--color-text-disabled);
+}
+
+.testtools__groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.testtools__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.testtools__group-title {
+  margin: 0;
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.testtools__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.testtools__label {
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.testtools__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Active (current stage / selected conflict mode) button: accent-tinted. */
+.testtools__btn.is-active {
+  color: var(--color-text-inverse);
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
