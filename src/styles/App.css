@@ -930,6 +930,327 @@
   color: var(--color-text-secondary);
 }
 
+/* ── Report view (grain-6) ──────────────────────────────────────
+ * Third grader block: the finished report. Sections stack vertically; every
+ * design value is a token reference. Layout primitives (flex/grid/aspect-ratio)
+ * are implementation settings per the coding policy. */
+.report-view {
+  gap: var(--space-lg);
+}
+
+.report-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.report-section__title {
+  margin: 0;
+  font-size: var(--text-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+/* ── Total gauge + grade badge ─────────────────────────────── */
+.report-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.report-gauge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.report-gauge__heading {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.report-gauge__score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.report-gauge__value {
+  font-size: var(--text-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.report-gauge__max {
+  font-size: var(--text-size-md);
+  color: var(--color-text-secondary);
+}
+
+.report-gauge__bar {
+  height: var(--space-sm);
+  background-color: var(--color-surface-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.report-gauge__fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-accent-primary);
+  border-radius: var(--radius-full);
+  transition: inline-size var(--transition-duration-base)
+    var(--transition-easing-standard);
+}
+
+.report-summary__grade {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.report-summary__note {
+  margin: 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ── Score cards (categories + AI axes) ────────────────────── */
+.report-score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-md);
+}
+
+.report-score-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+}
+
+.report-score-card__label {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.report-score-card__value {
+  margin: 0;
+  font-size: var(--text-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.report-score-card__max {
+  margin-left: var(--space-xs);
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+/* Partial-result notice replacing the AI cards on a done-partial report. */
+.report-partial-notice {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ── Screenshot tabs ───────────────────────────────────────── */
+.report-shots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.report-shots__tabs {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.report-shots__tab {
+  font-family: inherit;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-xs) var(--space-md);
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    border-color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    background-color var(--transition-duration-base)
+      var(--transition-easing-standard);
+}
+
+.report-shots__tab:hover {
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.report-shots__tab.is-selected {
+  color: var(--color-text-inverse);
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.report-shots__frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: var(--color-surface-muted);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.report-shots__image {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Checklist grouped by category (fail-first) ────────────── */
+.report-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.report-check-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.report-check-group__title {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+}
+
+.report-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background-color: var(--color-surface-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.report-check__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.report-check__label {
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.report-check__message {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.report-check__tip {
+  margin: 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-accent-primary);
+}
+
+/* ── AI axis comments ──────────────────────────────────────── */
+.report-comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.report-comment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.report-comment__axis {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.report-comment__text {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.report-comment__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-comment__suggestion {
+  font-size: var(--text-size-xs);
+  color: var(--color-accent-primary);
+}
+
+/* ── Download action ───────────────────────────────────────── */
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Load error card ───────────────────────────────────────── */
+.report-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.report-error__message {
+  margin: 0;
+  font-size: var(--text-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-status-danger);
+}
+
+.report-error__code {
+  margin: 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-status-danger);
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .app-header {
@@ -957,5 +1278,14 @@
 
   .dropzone {
     padding: var(--space-xl) var(--space-lg);
+  }
+
+  .report-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-summary__grade {
+    align-items: flex-start;
   }
 }
