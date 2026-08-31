@@ -20,6 +20,29 @@
   --color-status-danger: #dc2626;
   --color-status-danger-soft: #fef2f2;
   --color-status-danger-border: #fecaca;
+
+  /* color-status — check-result semantics for the grader report.
+   * pass / warn / fail (danger, above) / na, each with a soft fill and a
+   * border tint so status badges and check rows read consistently. */
+  --color-status-success: #16a34a;
+  --color-status-success-soft: #f0fdf4;
+  --color-status-success-border: #bbf7d0;
+  --color-status-warning: #b45309;
+  --color-status-warning-soft: #fffbeb;
+  --color-status-warning-border: #fde68a;
+  --color-status-neutral: #6b7280;
+  --color-status-neutral-soft: #f3f4f6;
+  --color-status-neutral-border: #e5e7eb;
+
+  /* color-grade — overall quality tiers (우수 / 양호 / 보통 / 미흡) shown on the
+   * grade badge + score gauge. Ordered best→worst by hue, red reserved for
+   * the lowest tier. */
+  --color-grade-excellent: #15803d;
+  --color-grade-good: #2563eb;
+  --color-grade-fair: #b45309;
+  --color-grade-poor: #dc2626;
+  --color-grade-pending: #6b7280;
+
   --color-overlay-scrim: rgba(15, 23, 42, 0.45);
 
   /* color-categorical — cyclic qualitative palette for per-source page tags.
@@ -96,4 +119,184 @@ body {
   background-color: var(--color-bg-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * Landing-grader presentation base
+ * Common, component-agnostic base styles for the grader UI: the vertical
+ * 3-block layout, the card surface, the progress stepper, and status/grade
+ * badges. Every design value is a token reference (var(--*)) — no literal
+ * colors, sizes, or radii. Per-component markup is layered on top by the
+ * component grains; this layer only establishes the shared skeleton.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* ── 3-block layout ─────────────────────────────────────────────
+ * UrlForm → ProgressStepper → ReportView stacked vertically, centered
+ * within a readable measure, with the test-tools panel above them. */
+.grader-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.grader-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* ── Card surface ───────────────────────────────────────────────
+ * The shared elevated container for every grader block. */
+.grader-card {
+  padding: var(--space-lg);
+  background-color: var(--color-surface-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.grader-card--muted {
+  background-color: var(--color-surface-muted);
+  box-shadow: none;
+}
+
+.grader-card--danger {
+  background-color: var(--color-status-danger-soft);
+  border-color: var(--color-status-danger-border);
+  color: var(--color-status-danger);
+}
+
+/* ── Progress stepper ───────────────────────────────────────────
+ * Sequential steps (load → audit → ai → done). A step carries `is-active`
+ * for the current stage and `is-done` for completed stages; the base is the
+ * pending look. State classes are driven off body[data-stage] by later
+ * grains — this layer only defines the visual states. */
+.grader-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.grader-step {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--text-size-sm);
+}
+
+.grader-step__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-lg);
+  height: var(--space-lg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-default);
+  color: var(--color-text-secondary);
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  transition: background-color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    border-color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    color var(--transition-duration-base) var(--transition-easing-standard);
+}
+
+.grader-step.is-active {
+  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.grader-step.is-active .grader-step__dot {
+  border-color: var(--color-accent-primary);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-primary);
+}
+
+.grader-step.is-done {
+  color: var(--color-text-primary);
+}
+
+.grader-step.is-done .grader-step__dot {
+  border-color: var(--color-accent-primary);
+  background-color: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+}
+
+.grader-step.is-error .grader-step__dot {
+  border-color: var(--color-status-danger-border);
+  background-color: var(--color-status-danger-soft);
+  color: var(--color-status-danger);
+}
+
+/* ── Badge ──────────────────────────────────────────────────────
+ * Pill used for check results (pass/warn/fail/na) and grade tiers.
+ * The base is the neutral look; status/grade modifiers recolor it. */
+.grader-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-status-neutral-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-status-neutral-soft);
+  color: var(--color-status-neutral);
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-base);
+  white-space: nowrap;
+}
+
+.grader-badge--pass {
+  border-color: var(--color-status-success-border);
+  background-color: var(--color-status-success-soft);
+  color: var(--color-status-success);
+}
+
+.grader-badge--warn {
+  border-color: var(--color-status-warning-border);
+  background-color: var(--color-status-warning-soft);
+  color: var(--color-status-warning);
+}
+
+.grader-badge--fail {
+  border-color: var(--color-status-danger-border);
+  background-color: var(--color-status-danger-soft);
+  color: var(--color-status-danger);
+}
+
+.grader-badge--na {
+  border-color: var(--color-status-neutral-border);
+  background-color: var(--color-status-neutral-soft);
+  color: var(--color-status-neutral);
+}
+
+/* Grade tiers reuse the badge pill with the grade color scale. */
+.grader-badge--grade-excellent {
+  color: var(--color-grade-excellent);
+}
+
+.grader-badge--grade-good {
+  color: var(--color-grade-good);
+}
+
+.grader-badge--grade-fair {
+  color: var(--color-grade-fair);
+}
+
+.grader-badge--grade-poor {
+  color: var(--color-grade-poor);
+}
+
+.grader-badge--grade-pending {
+  color: var(--color-grade-pending);
 }
