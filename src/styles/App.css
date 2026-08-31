@@ -214,6 +214,42 @@
   color: var(--color-status-danger);
 }
 
+/* Inline field error (grain-4): a calm danger-colored message shown under a
+ * form field (URL format / start-conflict). Reuses the same danger token as the
+ * toolbar's inline error; generic so any field can adopt it. */
+.field-error {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-status-danger);
+}
+
+/* ── URL form (grain-4) ─────────────────────────────────────────
+ * First grader block: URL input + start/reset action, stacked label over an
+ * input+button row. Colors/spacing/radius come from tokens; flex layout is an
+ * implementation setting. */
+.url-form__label {
+  display: block;
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.url-form__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.url-form__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.url-form__action {
+  flex: 0 0 auto;
+}
+
 /* ── Button ─────────────────────────────────────────────────── */
 .btn {
   font-family: inherit;
