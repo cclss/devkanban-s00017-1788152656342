@@ -12,7 +12,7 @@
  * No heavy boundaries need mocking here: the grader flow is pure state + demo
  * data (no real `/api/analyze` in this grain).
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import App from './App'
 import { URL_FORM_STRINGS } from './components/UrlForm'
@@ -23,6 +23,7 @@ import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
 afterEach(() => {
   cleanup()
   document.body.removeAttribute('data-stage')
+  vi.unstubAllGlobals()
 })
 
 beforeEach(() => {
@@ -86,13 +87,27 @@ describe('App grader shell', () => {
     expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
   })
 
-  it('starts a real run from idle: 진단 시작 moves data-stage to load', () => {
+  it('starts a real run from idle: 진단 시작 POSTs /api/analyze (url in body) and enters load', () => {
+    // A never-resolving fetch holds the run in `load` so the assertion sees the
+    // synchronous transition without a real network call or later state churn.
+    const fetchMock = vi.fn(
+      (_url: string, _init: RequestInit) => new Promise<Response>(() => {}),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
     render(<App />)
     fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
       target: { value: 'https://example.com' },
     })
     fireEvent.click(screen.getByRole('button', { name: URL_FORM_STRINGS.start }))
+
     expect(stageOf()).toBe('load')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [calledUrl, init] = fetchMock.mock.calls[0]
+    // The endpoint path carries no query — the URL rides the JSON body.
+    expect(calledUrl).toBe('/api/analyze')
+    expect(String(calledUrl)).not.toContain('example.com')
+    expect(JSON.parse(init.body as string)).toMatchObject({ url: 'https://example.com' })
   })
 
   it('conflict simulation blocks a start client-side with an inline error', () => {
