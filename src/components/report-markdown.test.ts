@@ -12,7 +12,11 @@ import {
   doneReport,
   donePartialReport,
 } from '../core/__fixtures__/report-fixtures'
-import { buildReportFilename, buildReportMarkdown } from './report-markdown'
+import {
+  PARTIAL_REPORT_NOTICE,
+  buildReportFilename,
+  buildReportMarkdown,
+} from './report-markdown'
 
 describe('buildReportFilename', () => {
   it('builds landing-report-<host>-<timestamp>.md from the report URL and time', () => {
@@ -63,6 +67,11 @@ describe('buildReportMarkdown — done (full report)', () => {
     expect(md).toContain('### 비주얼 (15/16)')
     expect(md).toContain('- 제안: 히어로 영역의 대비를 조금 더 높여 시선을 집중시키세요.')
   })
+
+  it('does not render the partial-result guidance notice', () => {
+    expect(md).not.toContain(PARTIAL_REPORT_NOTICE)
+    expect(md).not.toContain('부분 결과 안내')
+  })
 })
 
 describe('buildReportMarkdown — done-partial (60-point scale)', () => {
@@ -71,6 +80,15 @@ describe('buildReportMarkdown — done-partial (60-point scale)', () => {
   it('states the 60-point scale on the total and holds the grade', () => {
     expect(md).toContain('- 총점: 50 / 60 (자동 점검 60점 만점 기준)')
     expect(md).toContain('- 등급: 등급 보류')
+  })
+
+  it('renders an explicit standalone partial-result guidance notice near the top', () => {
+    // The dedicated notice block is present, above the score summary section.
+    expect(md).toContain('> **부분 결과 안내**')
+    expect(md).toContain(`> ${PARTIAL_REPORT_NOTICE}`)
+    expect(md.indexOf('부분 결과 안내')).toBeLessThan(md.indexOf('## 점수 요약'))
+    // It reuses the same partialReason the screen shows.
+    expect(md).toContain('> AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.')
   })
 
   it('marks the AI rubric unavailable and prints the drop reason instead of axes', () => {

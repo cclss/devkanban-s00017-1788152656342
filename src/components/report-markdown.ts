@@ -10,8 +10,9 @@
  * - {@link buildReportMarkdown} — renders the full report (total, grade,
  *   per-category scores, every check with its status and tip, and the AI axes'
  *   comments/suggestions) to a markdown document. On a `done-partial` report it
- *   states the "60점 만점 기준" scale and the AI-drop reason instead of AI axes,
- *   so the downloaded file matches what the screen shows (SC-3).
+ *   adds a dedicated Korean guidance notice near the top, states the "60점 만점
+ *   기준" scale, and prints the AI-drop reason instead of AI axes, so the
+ *   downloaded file matches what the screen shows (SC-3).
  *
  * Wrapping the string in a Blob and triggering the browser download is the
  * component's job (via `core/download`'s `downloadBlob`); this module only
@@ -27,6 +28,17 @@ import { CHECK_STATUS_LABELS, GRADE_LABELS, sortChecksFailFirst } from './report
 
 /** Characters unsafe in a file name (reserved across common platforms). */
 const UNSAFE_FILENAME_CHARS = /[<>:"|?*/\\]+/g
+
+/**
+ * Standalone Korean guidance sentence stating, in plain terms, that this is a
+ * partial report written on the 60-point auto-audit scale because the AI step
+ * was dropped. Rendered as a dedicated notice block near the top of a
+ * `done-partial` document (never in a `done` document), so a reader who opens
+ * the downloaded file immediately understands the scope of the result
+ * (Validation SC-3). Confirmed Korean domain copy, not a design token.
+ */
+export const PARTIAL_REPORT_NOTICE =
+  'AI 평가가 제외되어 자동 점검 60점 만점 기준으로 작성된 부분 결과 리포트입니다.'
 
 /**
  * Reduces a URL to a safe host segment for the download name. Falls back to
@@ -119,6 +131,17 @@ export function buildReportMarkdown(report: AnalysisReport): string {
   )
   lines.push(`- 등급: ${GRADE_LABELS[score.grade]}`)
   lines.push('')
+
+  // Dedicated partial-result guidance block. Only a `done-partial` document
+  // carries it; a `done` document skips it entirely so its output is unchanged.
+  if (partial) {
+    lines.push('> **부분 결과 안내**')
+    lines.push(`> ${PARTIAL_REPORT_NOTICE}`)
+    if (report.partialReason) {
+      lines.push(`> ${report.partialReason}`)
+    }
+    lines.push('')
+  }
 
   lines.push('## 점수 요약')
   lines.push(`- 자동 점검: ${score.auditScore}/${score.auditMax}`)
