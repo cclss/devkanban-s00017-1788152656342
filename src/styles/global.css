@@ -17,6 +17,7 @@
   --color-border-default: #e5e7eb;
   --color-border-strong: #cbd5e1;
   --color-accent-primary: #2563eb;
+  --color-accent-primary-hover: #1d4ed8;
   --color-status-danger: #dc2626;
   --color-status-danger-soft: #fef2f2;
   --color-status-danger-border: #fecaca;
@@ -182,6 +183,7 @@ body {
 }
 
 .grader-step {
+  position: relative;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
@@ -192,7 +194,35 @@ body {
   font-size: var(--text-size-sm);
 }
 
+/* Connector line joining each step's dot to the next. Runs from this dot's
+ * centre to the next step's dot centre, sitting behind the dots (z-index). It
+ * turns accent once this step is `is-done`, so the completed segment of the
+ * walk reads as a filled track (Progress sketch). Line thickness is a literal
+ * like the other border/ring widths in this sheet. */
+.grader-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--space-lg) / 2 - 1px);
+  left: 50%;
+  z-index: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-border-strong);
+  transition: background-color var(--transition-duration-base)
+    var(--transition-easing-standard);
+}
+
+.grader-step.is-done::after {
+  background-color: var(--color-accent-primary);
+}
+
+.grader-step.is-error::after {
+  background-color: var(--color-status-danger-border);
+}
+
 .grader-step__dot {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -220,6 +250,21 @@ body {
   border-color: var(--color-accent-primary);
   background-color: var(--color-accent-soft);
   color: var(--color-accent-primary);
+  animation: grader-step-pulse 1.4s var(--transition-easing-standard) infinite;
+}
+
+/* Soft accent ring that breathes out from the active dot, marking the stage the
+ * diagnosis is currently working on (Progress sketch's live-stage affordance). */
+@keyframes grader-step-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-accent-soft);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .grader-step.is-done {
@@ -299,4 +344,12 @@ body {
 
 .grader-badge--grade-pending {
   color: var(--color-grade-pending);
+}
+
+/* Honour users who ask for reduced motion: drop the looping stage pulse (and any
+ * other infinite spin) to a static state rather than animating indefinitely. */
+@media (prefers-reduced-motion: reduce) {
+  .grader-step.is-active .grader-step__dot {
+    animation: none;
+  }
 }

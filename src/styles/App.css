@@ -323,6 +323,19 @@
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
+  transition: color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    background-color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    border-color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    box-shadow var(--transition-duration-base)
+      var(--transition-easing-standard);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
 .btn--primary {
@@ -331,6 +344,19 @@
   border-color: var(--color-accent-primary);
   padding: var(--space-sm) var(--space-lg);
   font-size: var(--text-size-md);
+}
+
+/* Press/hover feedback for the primary action (진단 시작 / 리포트 다운로드):
+ * darkens to the stronger accent so the click registers visibly. */
+.btn--primary:not(:disabled):hover {
+  background-color: var(--color-accent-primary-hover);
+  border-color: var(--color-accent-primary-hover);
+}
+
+.btn--primary:not(:disabled):active {
+  background-color: var(--color-accent-primary-hover);
+  border-color: var(--color-accent-primary-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn--disabled,
@@ -1159,8 +1185,14 @@
   color: var(--color-text-secondary);
 }
 
+/* Lead line of the partial-result notice ("AI 평가 결과 없음 …"): carries the
+ * weight/primary colour so it reads as the headline above the muted
+ * self-explanatory detail toggle, keeping the partial state's copy hierarchy
+ * clear rather than a flat block of secondary text. */
 .report-partial-notice__reason {
   margin: 0;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
 }
 
 /* ── Failure-detail disclosure (자세히 보기) ─────────────────────
@@ -1214,6 +1246,13 @@
 .report-shots__tab:hover {
   color: var(--color-accent-primary);
   border-color: var(--color-accent-primary);
+}
+
+.report-shots__tab:focus-visible {
+  outline: none;
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .report-shots__tab.is-selected {
