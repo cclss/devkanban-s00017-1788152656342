@@ -1376,6 +1376,26 @@
   gap: var(--space-xs);
 }
 
+/* Key input + reveal toggle sit on one row; the input takes the free space. */
+.testtools__key-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-xs);
+}
+
+.testtools__key-row .testtools__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Persistence reassurance under the key field. */
+.testtools__hint {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-text-disabled);
+  line-height: var(--line-height-base);
+}
+
 /* Active (current stage / selected conflict mode) button: accent-tinted. */
 .testtools__btn.is-active {
   color: var(--color-text-inverse);

@@ -88,6 +88,49 @@ describe('ApiKeyPanel', () => {
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe('')
   })
 
+  it('keeps a typed key across an unmount+remount (survives a page reload)', () => {
+    const { unmount } = render(<ApiKeyPanel />)
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+      target: { value: 'sk-persist-me' },
+    })
+    unmount()
+    // A brand-new mount reads the same localStorage — the key must reappear.
+    render(<ApiKeyPanel />)
+    expect(
+      (screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel) as HTMLInputElement)
+        .value,
+    ).toBe('sk-persist-me')
+  })
+
+  it('masks the key by default and reveals/re-masks it via the toggle', () => {
+    render(<ApiKeyPanel />)
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.change(keyInput, { target: { value: 'sk-secret' } })
+    // Masked by default.
+    expect(keyInput.type).toBe('password')
+
+    const toggle = screen.getByRole('button', {
+      name: API_KEY_PANEL_STRINGS.revealShow,
+    })
+    fireEvent.click(toggle)
+    // Revealed: type flips and the same value stays put (nothing is cleared).
+    expect(keyInput.type).toBe('text')
+    expect(keyInput.value).toBe('sk-secret')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.revealHide }),
+    )
+    expect(keyInput.type).toBe('password')
+    expect(keyInput.value).toBe('sk-secret')
+  })
+
+  it('shows the persistence hint describing local auto-save', () => {
+    render(<ApiKeyPanel />)
+    expect(screen.getByText(API_KEY_PANEL_STRINGS.keyHint)).toBeDefined()
+  })
+
   it('fires onChange with the whole form value on each change', () => {
     const seen: { provider: string; model: string; apiKey: string }[] = []
     render(<ApiKeyPanel onChange={(value) => seen.push(value)} />)

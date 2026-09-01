@@ -19,6 +19,7 @@ import { URL_FORM_STRINGS } from './components/UrlForm'
 import { REPORT_VIEW_STRINGS } from './components/ReportView'
 import { PROGRESS_STEPPER_LABEL } from './components/ProgressStepper'
 import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
+import { API_KEY_PANEL_STRINGS } from './components/testtools/ApiKeyPanel'
 
 afterEach(() => {
   cleanup()
@@ -108,6 +109,74 @@ describe('App grader shell', () => {
     expect(calledUrl).toBe('/api/analyze')
     expect(String(calledUrl)).not.toContain('example.com')
     expect(JSON.parse(init.body as string)).toMatchObject({ url: 'https://example.com' })
+  })
+
+  it('keeps the entered API key after a diagnosis fails to a partial result', async () => {
+    // The run streams to done-partial (AI failure). The key the user typed must
+    // still be present in the field and storage afterwards — a failed test must
+    // not wipe the entered key.
+    const body = [
+      { type: 'stage', stage: 'load' },
+      { type: 'stage', stage: 'audit' },
+      { type: 'stage', stage: 'ai' },
+      { type: 'stage', stage: 'done-partial' },
+      {
+        type: 'result',
+        result: {
+          outcome: 'done-partial',
+          url: 'https://example.com',
+          analyzedAt: '2026-09-01T00:00:00.000Z',
+          score: {
+            total: 40,
+            max: 60,
+            grade: 'pending',
+            auditScore: 40,
+            auditMax: 60,
+            llmScore: null,
+            llmMax: 40,
+          },
+          categories: [],
+          llmAxes: null,
+          screenshots: [],
+          partialReason: 'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+        },
+      },
+    ]
+      .map((line) => JSON.stringify(line))
+      .join('\n')
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(body))
+              controller.close()
+            },
+          }),
+          { status: 200 },
+        ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.change(keyInput, { target: { value: 'sk-keep-me' } })
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: URL_FORM_STRINGS.start }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(stageOf()).toBe('done-partial')
+    expect(
+      (screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel) as HTMLInputElement)
+        .value,
+    ).toBe('sk-keep-me')
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
+      'sk-keep-me',
+    )
   })
 
   it('conflict simulation blocks a start client-side with an inline error', () => {

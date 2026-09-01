@@ -84,6 +84,15 @@ export const API_KEY_PANEL_STRINGS = {
   presetNone: '키 없음',
   presetValid: '유효한 키',
   presetInvalid: '무효한 키',
+  /** Button that reveals the masked key so a saved value can be confirmed. */
+  revealShow: '키 표시',
+  /** Button that re-masks a revealed key. */
+  revealHide: '키 숨김',
+  /**
+   * Reassures the user the key is persisted locally, so a masked (dotted) field
+   * is not mistaken for a lost value after a failed run or a page reload.
+   */
+  keyHint: '입력한 키는 이 브라우저에 자동 저장되어 다음에 다시 입력할 필요가 없습니다.',
 } as const
 
 const DEFAULT_PROVIDER = API_KEY_PROVIDERS[0].id
@@ -120,10 +129,14 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
   const [apiKey, setApiKey] = useState(
     () => readStored(API_KEY_STORAGE_KEYS.apiKey) ?? '',
   )
+  // Reveal the masked key on demand so a persisted value can be confirmed by
+  // eye. Purely presentational — it never touches storage. Defaults to masked.
+  const [revealed, setRevealed] = useState(false)
 
   const providerId = useId()
   const modelId = useId()
   const keyId = useId()
+  const hintId = useId()
 
   // Persist whatever was seeded (including the defaults) once on mount, so the
   // three keys always exist after the panel has been shown.
@@ -208,16 +221,35 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
         <label className="testtools__label" htmlFor={keyId}>
           {API_KEY_PANEL_STRINGS.keyLabel}
         </label>
-        {/* Masked so the key is never shown in plain text on screen. */}
-        <input
-          id={keyId}
-          type="password"
-          className="field-input testtools__input"
-          value={apiKey}
-          placeholder={API_KEY_PANEL_STRINGS.keyPlaceholder}
-          autoComplete="off"
-          onChange={(event) => handleKey(event.target.value)}
-        />
+        <div className="testtools__key-row">
+          {/* Masked by default so the key is not shown in plain text; the reveal
+              toggle flips it to text so a saved key can be confirmed. */}
+          <input
+            id={keyId}
+            type={revealed ? 'text' : 'password'}
+            className="field-input testtools__input"
+            value={apiKey}
+            placeholder={API_KEY_PANEL_STRINGS.keyPlaceholder}
+            autoComplete="off"
+            aria-describedby={hintId}
+            onChange={(event) => handleKey(event.target.value)}
+          />
+          <button
+            type="button"
+            className="btn testtools__btn"
+            aria-pressed={revealed}
+            onClick={() => setRevealed((current) => !current)}
+          >
+            {revealed
+              ? API_KEY_PANEL_STRINGS.revealHide
+              : API_KEY_PANEL_STRINGS.revealShow}
+          </button>
+        </div>
+        {/* Tells the user the key persists locally, so a dotted field after a
+            failed run or reload is not mistaken for a lost value. */}
+        <p id={hintId} className="testtools__hint">
+          {API_KEY_PANEL_STRINGS.keyHint}
+        </p>
       </div>
 
       <div className="testtools__buttons" role="group" aria-label={API_KEY_PANEL_STRINGS.presetGroupLabel}>
