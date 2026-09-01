@@ -15,11 +15,17 @@
  * `node` environment.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import UrlForm, { URL_FORM_STRINGS, isHttpUrl } from './UrlForm'
+import { MAX_SAVED_URLS, readUrlHistory } from './url-history'
 import type { StartResult } from '../state/stage'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  // The saved-address history persists in localStorage across renders; clear it
+  // so each test starts from an empty history.
+  window.localStorage.clear()
+})
 
 /** A clean "started" outcome, as the machine returns from idle. */
 const started: StartResult = { stage: 'load', started: true, conflict: false }
@@ -107,6 +113,102 @@ describe('UrlForm — conflict', () => {
     expect(onStart).toHaveBeenCalledWith('https://example.com')
     expect(screen.getByRole('alert').textContent).toBe(URL_FORM_STRINGS.conflictError)
     expect(URL_FORM_STRINGS.conflictError).toContain('이미 분석이 진행 중입니다')
+  })
+})
+
+describe('UrlForm — saved addresses (up to 5)', () => {
+  function getSavedGroup() {
+    return screen.getByText(URL_FORM_STRINGS.savedLabel).parentElement as HTMLElement
+  }
+
+  function startUrl(value: string) {
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value },
+    })
+    fireEvent.click(getStartButton())
+  }
+
+  it('has no saved section before any run', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+    expect(screen.queryByText(URL_FORM_STRINGS.savedLabel)).toBeNull()
+  })
+
+  it('saves a URL after a successful start and shows it as a chip', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    startUrl('https://example.com/landing')
+
+    expect(
+      within(getSavedGroup()).getByRole('button', {
+        name: 'https://example.com/landing',
+      }),
+    ).toBeDefined()
+    // Persisted to storage, not just React state.
+    expect(readUrlHistory()).toEqual(['https://example.com/landing'])
+  })
+
+  it('does not save a URL that fails format validation', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    startUrl('ftp://example.com')
+
+    expect(screen.queryByText(URL_FORM_STRINGS.savedLabel)).toBeNull()
+    expect(readUrlHistory()).toEqual([])
+  })
+
+  it('does not save a URL when the start is blocked by a conflict', () => {
+    const conflict: StartResult = { stage: 'idle', started: false, conflict: true }
+    render(<UrlForm stage="idle" onStart={vi.fn(() => conflict)} onReset={vi.fn()} />)
+
+    startUrl('https://example.com')
+
+    expect(screen.queryByText(URL_FORM_STRINGS.savedLabel)).toBeNull()
+    expect(readUrlHistory()).toEqual([])
+  })
+
+  it('restores saved addresses from storage on mount', () => {
+    window.localStorage.setItem(
+      'landing_grader_url_history',
+      JSON.stringify(['https://saved-1.com', 'https://saved-2.com']),
+    )
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    const group = getSavedGroup()
+    expect(within(group).getByRole('button', { name: 'https://saved-1.com' })).toBeDefined()
+    expect(within(group).getByRole('button', { name: 'https://saved-2.com' })).toBeDefined()
+  })
+
+  it('fills the input from a saved chip without starting a run', () => {
+    const onStart = vi.fn<(url: string) => StartResult>(() => started)
+    window.localStorage.setItem(
+      'landing_grader_url_history',
+      JSON.stringify(['https://saved-1.com']),
+    )
+    render(<UrlForm stage="idle" onStart={onStart} onReset={vi.fn()} />)
+
+    fireEvent.click(
+      within(getSavedGroup()).getByRole('button', { name: 'https://saved-1.com' }),
+    )
+
+    expect(screen.getByLabelText(URL_FORM_STRINGS.urlLabel)).toHaveProperty(
+      'value',
+      'https://saved-1.com',
+    )
+    // Selecting a chip does not itself start a run.
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
+  it('keeps at most 5 saved addresses, newest first', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    for (let i = 1; i <= 6; i += 1) {
+      startUrl(`https://site-${i}.com`)
+    }
+
+    const stored = readUrlHistory()
+    expect(stored).toHaveLength(MAX_SAVED_URLS)
+    expect(stored[0]).toBe('https://site-6.com')
+    expect(stored).not.toContain('https://site-1.com')
   })
 })
 

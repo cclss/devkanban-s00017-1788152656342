@@ -22,6 +22,12 @@
  *   blocks it, not the server.
  * - In any terminal stage (`done` / `done-partial` / `error-load`) the start
  *   button is replaced by a "새로 진단" reset button wired to `onReset`.
+ * - Saved addresses: a URL that actually starts a run (format-valid, not blocked
+ *   by a conflict) is recorded to a browser-local history of up to five recent
+ *   site addresses (see {@link module:components/url-history}). The history shows
+ *   as click-to-fill chips under the input so a returning user can re-run a
+ *   previous URL without retyping it; the list is the form's only local state
+ *   beyond the input, seeded from storage on mount.
  *
  * Boundary: presentational component. It imports the `Stage` type and the
  * `StartResult` shape from the state layer but holds no flow state and touches
@@ -36,6 +42,7 @@ import {
   type Stage,
   type StartResult,
 } from '../state/stage'
+import { addUrlToHistory, readUrlHistory, writeUrlHistory } from './url-history'
 
 /**
  * Korean, user-facing copy for the URL form. Co-located as confirmed domain
@@ -55,6 +62,8 @@ export const URL_FORM_STRINGS = {
   formatError: 'http:// 또는 https:// 로 시작하는 URL을 입력하세요.',
   /** Inline error when a run is already in progress (client-side conflict block). */
   conflictError: '이미 분석이 진행 중입니다. 완료 후 다시 시도하세요.',
+  /** Section label above the saved-address chips (recent URLs, up to 5). */
+  savedLabel: '저장된 주소',
 } as const
 
 /**
@@ -92,6 +101,9 @@ export interface UrlFormProps {
 export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Recently-diagnosed addresses (up to 5), seeded from browser-local storage on
+  // mount so a returning user sees their saved URLs without retyping.
+  const [savedUrls, setSavedUrls] = useState<string[]>(() => readUrlHistory())
   const inputId = useId()
   const errorId = useId()
 
@@ -107,12 +119,20 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
     }
     // Authoritative start: the machine may still refuse with a conflict, which
     // we surface inline and send nothing — the client blocks, not the server.
-    const result = onStart(url.trim())
+    const trimmed = url.trim()
+    const result = onStart(trimmed)
     if (result.conflict) {
       setError(URL_FORM_STRINGS.conflictError)
       return
     }
     setError(null)
+    // The run actually started: remember this address (newest first, max 5) so
+    // it can be re-run later without retyping.
+    setSavedUrls((current) => {
+      const next = addUrlToHistory(current, trimmed)
+      writeUrlHistory(next)
+      return next
+    })
   }
 
   const handleReset = () => {
@@ -123,6 +143,13 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
   const handleChange = (value: string) => {
     setUrl(value)
     // Clear a stale inline error as soon as the user edits the field.
+    if (error) setError(null)
+  }
+
+  // Fill the input from a saved address so it can be re-run; clears any stale
+  // error but does not start the run (the user still presses "진단 시작").
+  const handleSelectSaved = (value: string) => {
+    setUrl(value)
     if (error) setError(null)
   }
 
@@ -171,6 +198,28 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
           <p id={errorId} className="field-error" role="alert">
             {error}
           </p>
+        ) : null}
+        {savedUrls.length > 0 ? (
+          <div className="url-form__saved">
+            <span className="url-form__saved-label">
+              {URL_FORM_STRINGS.savedLabel}
+            </span>
+            <ul className="url-form__saved-list">
+              {savedUrls.map((saved) => (
+                <li key={saved}>
+                  <button
+                    type="button"
+                    className="url-form__saved-item"
+                    onClick={() => handleSelectSaved(saved)}
+                    disabled={inProgress}
+                    title={saved}
+                  >
+                    {saved}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
     </form>

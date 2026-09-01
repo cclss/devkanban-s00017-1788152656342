@@ -250,6 +250,69 @@
   flex: 0 0 auto;
 }
 
+/* Saved addresses (up to 5): recently-diagnosed URLs shown as click-to-fill
+ * chips under the input. Colours/spacing/radius come from tokens (reusing the
+ * muted-badge surface used by the source-list page badge); flex/wrap and text
+ * truncation are implementation settings. */
+.url-form__saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.url-form__saved-label {
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.url-form__saved-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.url-form__saved-item {
+  max-width: 100%;
+  font-family: inherit;
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-surface-muted);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--transition-duration-base)
+      var(--transition-easing-standard),
+    border-color var(--transition-duration-base)
+      var(--transition-easing-standard);
+}
+
+.url-form__saved-item:hover {
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.url-form__saved-item:focus-visible {
+  outline: none;
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.url-form__saved-item:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
 /* ── Button ─────────────────────────────────────────────────── */
 .btn {
   font-family: inherit;
