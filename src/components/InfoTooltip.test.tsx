@@ -130,4 +130,44 @@ describe('InfoTooltip', () => {
     render(<InfoTooltip helpKey={KEY} label="Custom label" />)
     expect(screen.getByRole('button').getAttribute('aria-label')).toBe('Custom label')
   })
+
+  describe('copy-agnostic entry path', () => {
+    const entry = { title: '진단할 URL', body: '진단할 랜딩페이지 주소를 입력합니다.' }
+
+    it('renders arbitrary copy from an entry prop, closed, with the title in its name', () => {
+      render(<InfoTooltip entry={entry} />)
+      const trigger = screen.getByRole('button')
+
+      expect(trigger.getAttribute('aria-label')).toContain(entry.title)
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(screen.queryByRole('tooltip')).toBeNull()
+      expect(screen.queryByText(entry.body)).toBeNull()
+    })
+
+    it('opens and closes the entry copy in a role="tooltip" on click', () => {
+      render(<InfoTooltip entry={entry} />)
+      const trigger = screen.getByRole('button')
+
+      fireEvent.click(trigger)
+      const popover = screen.getByRole('tooltip')
+      expect(popover).toBeDefined()
+      expect(screen.getByText(entry.title)).toBeDefined()
+      expect(screen.getByText(entry.body)).toBeDefined()
+      expect(trigger.getAttribute('aria-describedby')).toBe(popover.id)
+
+      fireEvent.click(trigger)
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(screen.queryByRole('tooltip')).toBeNull()
+    })
+
+    it('accepts title/body passed inline instead of an entry object', () => {
+      render(<InfoTooltip title="스크린샷 탭" body="데스크톱·모바일 스크린샷을 전환합니다." />)
+      const trigger = screen.getByRole('button')
+      expect(trigger.getAttribute('aria-label')).toContain('스크린샷 탭')
+
+      fireEvent.click(trigger)
+      expect(screen.getByRole('tooltip')).toBeDefined()
+      expect(screen.getByText('데스크톱·모바일 스크린샷을 전환합니다.')).toBeDefined()
+    })
+  })
 })

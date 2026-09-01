@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { HELP_TEXT } from '../strings/helpText'
-import type { HelpKey } from '../strings/helpText'
+import type { HelpEntry, HelpKey } from '../strings/helpText'
 
 /**
- * Accessible per-feature info icon (spec: per-feature help system, definition §info icon).
+ * Accessible per-control info icon (spec: per-feature help system, definition §info icon).
  *
- * A small ⓘ trigger placed next to a feature; hovering or activating it reveals a
- * popover with that one feature's help copy. The copy is never inlined — it is
- * read by key from the central {@link HELP_TEXT} source so the per-feature
- * tooltips and the later unified help screen stay in sync.
+ * A small ⓘ trigger placed next to a control; hovering or activating it reveals a
+ * popover with that one control's help copy. The copy is never inlined — it is
+ * supplied either directly as a `{title, body}` {@link HelpEntry} (the general
+ * path, so any co-located copy source can feed it) or, for the legacy PDF-tool
+ * features, by `helpKey` into the central {@link HELP_TEXT}. Both paths render the
+ * same accessible popover.
  *
  * Accessibility (spec §additional accessibility requirements):
  * - The trigger is a real `<button>`: Tab-focusable, and Enter/Space open it.
@@ -18,19 +20,38 @@ import type { HelpKey } from '../strings/helpText'
  *   "tooltip"`) so a screen reader announces the description with the control.
  * - ESC and an outside click both close it.
  *
- * Presentational only: it consumes {@link HELP_TEXT} by key and owns no app
+ * Presentational only: it renders whatever copy it is handed and owns no app
  * logic (design-system coding policy — no core logic in a view component).
  */
-export interface InfoTooltipProps {
-  /** Which feature's help copy to show — indexes {@link HELP_TEXT}. */
-  helpKey: HelpKey
+interface InfoTooltipBaseProps {
   /**
    * Optional override for the trigger's accessible name. Defaults to
-   * `"Help: {title}"` so screen-reader users hear which feature it explains.
+   * `"Help: {title}"` so screen-reader users hear which control it explains.
    */
   label?: string
   /** Extra class(es) appended to the wrapper, for placement by host components. */
   className?: string
+}
+
+/**
+ * Copy source for the tooltip — exactly one of:
+ * - `entry`: a `{title, body}` {@link HelpEntry} straight from any co-located copy
+ *   module (the general, copy-agnostic path);
+ * - `title` + `body`: the two strings passed inline;
+ * - `helpKey`: a key into the legacy {@link HELP_TEXT} (PDF-tool features).
+ */
+export type InfoTooltipProps = InfoTooltipBaseProps &
+  (
+    | { entry: HelpEntry; helpKey?: never; title?: never; body?: never }
+    | { title: string; body: string; helpKey?: never; entry?: never }
+    | { helpKey: HelpKey; entry?: never; title?: never; body?: never }
+  )
+
+/** Resolve the props union to the single `{title, body}` the popover renders. */
+function resolveEntry(props: InfoTooltipProps): HelpEntry {
+  if (props.entry) return props.entry
+  if (props.helpKey) return HELP_TEXT[props.helpKey]
+  return { title: props.title, body: props.body }
 }
 
 /** Info glyph (ⓘ) drawn inline to match the app's other inline-SVG icons. */
@@ -55,8 +76,9 @@ function InfoGlyph() {
   )
 }
 
-export default function InfoTooltip({ helpKey, label, className }: InfoTooltipProps) {
-  const { title, body } = HELP_TEXT[helpKey]
+export default function InfoTooltip(props: InfoTooltipProps) {
+  const { label, className } = props
+  const { title, body } = resolveEntry(props)
 
   // Two independent open sources so a hover-open and a click-pinned state don't
   // fight: the popover is visible if either is active.
