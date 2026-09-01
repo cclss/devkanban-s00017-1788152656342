@@ -26,6 +26,7 @@ vi.mock('../core/download', () => ({
 }))
 
 import ReportView, { REPORT_VIEW_STRINGS } from './ReportView'
+import { CONTROL_HELP } from './control-help'
 import {
   doneReport,
   donePartialReport,
@@ -181,6 +182,31 @@ describe('ReportView — markdown download', () => {
     render(<ReportView report={donePartialReport} />)
     const button = screen.getByRole('button', { name: REPORT_VIEW_STRINGS.download })
     fireEvent.click(button)
+    expect(downloadBlob).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ReportView — per-control ⓘ help', () => {
+  function helpTrigger(entry: { title: string }) {
+    return screen.getByRole('button', { name: `Help: ${entry.title}` })
+  }
+
+  it('renders a ⓘ trigger for the download button and the screenshot tabs', () => {
+    render(<ReportView report={doneReport} />)
+    expect(helpTrigger(CONTROL_HELP.markdownDownload).getAttribute('aria-expanded')).toBe('false')
+    expect(helpTrigger(CONTROL_HELP.screenshotTabs).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('reveals the matching help body on activation, leaving the download working', () => {
+    render(<ReportView report={doneReport} />)
+
+    fireEvent.click(helpTrigger(CONTROL_HELP.markdownDownload))
+    expect(screen.getByText(CONTROL_HELP.markdownDownload.body)).toBeDefined()
+
+    // The download control still fires with the help icon wired in.
+    fireEvent.click(
+      screen.getByRole('button', { name: REPORT_VIEW_STRINGS.download }),
+    )
     expect(downloadBlob).toHaveBeenCalledTimes(1)
   })
 })

@@ -5,10 +5,23 @@ import StageSimulator, {
   CONFLICT_CHOICES,
   STAGE_CHOICES,
 } from './StageSimulator'
+import { CONTROL_HELP } from '../control-help'
 
 afterEach(() => {
   cleanup()
 })
+
+function renderSimulator(overrides: Partial<Parameters<typeof StageSimulator>[0]> = {}) {
+  render(
+    <StageSimulator
+      stage="idle"
+      onForceStage={() => {}}
+      conflictMode="none"
+      onConflictModeChange={() => {}}
+      {...overrides}
+    />,
+  )
+}
 
 describe('StageSimulator', () => {
   it('renders one button per forceable stage', () => {
@@ -71,5 +84,28 @@ describe('StageSimulator', () => {
 
     fireEvent.click(screen.getByRole('button', { name: inProgressChoice.label }))
     expect(onConflictModeChange).toHaveBeenCalledWith('in-progress')
+  })
+
+  describe('per-control ⓘ help', () => {
+    function helpTrigger(entry: { title: string }) {
+      return screen.getByRole('button', { name: `Help: ${entry.title}` })
+    }
+
+    it('renders a ⓘ trigger for the stage-force and conflict groups', () => {
+      renderSimulator()
+      expect(helpTrigger(CONTROL_HELP.forceStage).getAttribute('aria-expanded')).toBe('false')
+      expect(helpTrigger(CONTROL_HELP.conflictSim).getAttribute('aria-expanded')).toBe('false')
+    })
+
+    it('reveals the matching help body on activation, leaving force controls working', () => {
+      const onForceStage = vi.fn()
+      renderSimulator({ onForceStage })
+
+      fireEvent.click(helpTrigger(CONTROL_HELP.forceStage))
+      expect(screen.getByText(CONTROL_HELP.forceStage.body)).toBeDefined()
+
+      fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+      expect(onForceStage).toHaveBeenCalledWith('done')
+    })
   })
 })

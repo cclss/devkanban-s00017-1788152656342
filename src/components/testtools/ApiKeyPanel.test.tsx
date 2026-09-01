@@ -10,6 +10,7 @@ import ApiKeyPanel, {
   resolveModelForProvider,
 } from './ApiKeyPanel'
 import { API_KEY_STORAGE_KEYS } from './api-key-storage'
+import { CONTROL_HELP } from '../control-help'
 
 afterEach(() => {
   cleanup()
@@ -211,6 +212,43 @@ describe('ApiKeyPanel', () => {
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
       'sk-my-gpt-key',
     )
+  })
+})
+
+describe('ApiKeyPanel — per-control ⓘ help', () => {
+  function helpTrigger(entry: { title: string }) {
+    return screen.getByRole('button', { name: `Help: ${entry.title}` })
+  }
+
+  it('renders a ⓘ trigger next to provider, model, key, reveal, and each preset', () => {
+    render(<ApiKeyPanel />)
+    for (const entry of [
+      CONTROL_HELP.provider,
+      CONTROL_HELP.model,
+      CONTROL_HELP.apiKey,
+      CONTROL_HELP.revealKey,
+      CONTROL_HELP.presetNone,
+      CONTROL_HELP.presetValid,
+      CONTROL_HELP.presetInvalid,
+    ]) {
+      expect(helpTrigger(entry).getAttribute('aria-expanded')).toBe('false')
+    }
+  })
+
+  it('reveals the matching help body on activation without altering the control', () => {
+    render(<ApiKeyPanel />)
+
+    fireEvent.click(helpTrigger(CONTROL_HELP.apiKey))
+    expect(screen.getByText(CONTROL_HELP.apiKey.body)).toBeDefined()
+
+    // The preset control still applies its value with the help icon in place.
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.click(
+      screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }),
+    )
+    expect(keyInput.value).toBe(API_KEY_PRESETS.valid)
   })
 })
 

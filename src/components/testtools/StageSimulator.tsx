@@ -18,6 +18,8 @@
  * state layer.
  */
 import type { Stage } from '../../state/stage'
+import InfoTooltip from '../InfoTooltip'
+import { CONTROL_HELP } from '../control-help'
 
 /** How the host's start action should behave, toggled by the conflict group. */
 export type ConflictMode = 'none' | 'in-progress'
@@ -73,9 +75,12 @@ export default function StageSimulator({
 }: StageSimulatorProps) {
   return (
     <section className="testtools__group" aria-label={STAGE_SIMULATOR_STRINGS.stageHeading}>
-      <h3 className="testtools__group-title">
-        {STAGE_SIMULATOR_STRINGS.stageHeading}
-      </h3>
+      <div className="control-help">
+        <h3 className="testtools__group-title">
+          {STAGE_SIMULATOR_STRINGS.stageHeading}
+        </h3>
+        <InfoTooltip entry={CONTROL_HELP.forceStage} />
+      </div>
       <div className="testtools__buttons" role="group" aria-label={STAGE_SIMULATOR_STRINGS.stageHeading}>
         {STAGE_CHOICES.map((choice) => {
           const active = choice.stage === stage
@@ -94,9 +99,12 @@ export default function StageSimulator({
         })}
       </div>
 
-      <h3 className="testtools__group-title">
-        {STAGE_SIMULATOR_STRINGS.conflictHeading}
-      </h3>
+      <div className="control-help">
+        <h3 className="testtools__group-title">
+          {STAGE_SIMULATOR_STRINGS.conflictHeading}
+        </h3>
+        <InfoTooltip entry={CONTROL_HELP.conflictSim} />
+      </div>
       <div className="testtools__buttons" role="group" aria-label={STAGE_SIMULATOR_STRINGS.conflictHeading}>
         {CONFLICT_CHOICES.map((choice) => {
           const active = choice.mode === conflictMode

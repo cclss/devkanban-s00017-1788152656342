@@ -41,6 +41,8 @@ import {
   sortChecksFailFirst,
 } from './report-labels'
 import { buildReportFilename, buildReportMarkdown } from './report-markdown'
+import InfoTooltip from './InfoTooltip'
+import { CONTROL_HELP } from './control-help'
 
 /**
  * Korean, user-facing copy for the report view. Co-located confirmed domain
@@ -239,7 +241,10 @@ function AnalysisReportView({
       {/* ── Screenshot tabs ───────────────────────────────────── */}
       {report.screenshots.length > 0 && activeShot ? (
         <div className="report-section">
-          <h3 className="report-section__title">{REPORT_VIEW_STRINGS.screenshotsHeading}</h3>
+          <div className="control-help">
+            <h3 className="report-section__title">{REPORT_VIEW_STRINGS.screenshotsHeading}</h3>
+            <InfoTooltip entry={CONTROL_HELP.screenshotTabs} />
+          </div>
           <div className="report-shots">
             <div className="report-shots__tabs" role="tablist" aria-label={REPORT_VIEW_STRINGS.screenshotsHeading}>
               {report.screenshots.map((shot) => {
@@ -327,9 +332,12 @@ function AnalysisReportView({
 
       {/* ── Markdown download ─────────────────────────────────── */}
       <div className="report-actions">
-        <button type="button" className="btn btn--primary" onClick={handleDownload}>
-          {REPORT_VIEW_STRINGS.download}
-        </button>
+        <span className="control-help">
+          <button type="button" className="btn btn--primary" onClick={handleDownload}>
+            {REPORT_VIEW_STRINGS.download}
+          </button>
+          <InfoTooltip entry={CONTROL_HELP.markdownDownload} />
+        </span>
       </div>
     </section>
   )

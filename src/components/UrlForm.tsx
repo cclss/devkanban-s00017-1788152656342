@@ -43,6 +43,8 @@ import {
   type StartResult,
 } from '../state/stage'
 import { addUrlToHistory, readUrlHistory, writeUrlHistory } from './url-history'
+import InfoTooltip from './InfoTooltip'
+import { CONTROL_HELP } from './control-help'
 
 /**
  * Korean, user-facing copy for the URL form. Co-located as confirmed domain
@@ -156,9 +158,12 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
   return (
     <form className="url-form grader-block" onSubmit={handleSubmit} noValidate>
       <div className="grader-card">
-        <label className="url-form__label" htmlFor={inputId}>
-          {URL_FORM_STRINGS.urlLabel}
-        </label>
+        <div className="control-help control-help--field-label">
+          <label className="url-form__label" htmlFor={inputId}>
+            {URL_FORM_STRINGS.urlLabel}
+          </label>
+          <InfoTooltip entry={CONTROL_HELP.urlInput} />
+        </div>
         <div className="url-form__row">
           <input
             id={inputId}
@@ -193,6 +198,7 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
               {URL_FORM_STRINGS.start}
             </button>
           )}
+          <InfoTooltip entry={CONTROL_HELP.startDiagnosis} />
         </div>
         {error ? (
           <p id={errorId} className="field-error" role="alert">
@@ -201,8 +207,9 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
         ) : null}
         {savedUrls.length > 0 ? (
           <div className="url-form__saved">
-            <span className="url-form__saved-label">
+            <span className="url-form__saved-label control-help">
               {URL_FORM_STRINGS.savedLabel}
+              <InfoTooltip entry={CONTROL_HELP.savedUrls} />
             </span>
             <ul className="url-form__saved-list">
               {savedUrls.map((saved) => (

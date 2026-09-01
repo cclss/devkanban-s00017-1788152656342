@@ -21,6 +21,8 @@ import {
   readStored,
   writeStored,
 } from './api-key-storage'
+import InfoTooltip from '../InfoTooltip'
+import { CONTROL_HELP } from '../control-help'
 
 /** Provider options. Anthropic (Claude) and OpenAI (GPT) are both supported. */
 export const API_KEY_PROVIDERS = [
@@ -182,9 +184,12 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
       <h3 className="testtools__group-title">{API_KEY_PANEL_STRINGS.heading}</h3>
 
       <div className="testtools__field">
-        <label className="testtools__label" htmlFor={providerId}>
-          {API_KEY_PANEL_STRINGS.providerLabel}
-        </label>
+        <div className="control-help">
+          <label className="testtools__label" htmlFor={providerId}>
+            {API_KEY_PANEL_STRINGS.providerLabel}
+          </label>
+          <InfoTooltip entry={CONTROL_HELP.provider} />
+        </div>
         <select
           id={providerId}
           className="field-input testtools__select"
@@ -200,9 +205,12 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
       </div>
 
       <div className="testtools__field">
-        <label className="testtools__label" htmlFor={modelId}>
-          {API_KEY_PANEL_STRINGS.modelLabel}
-        </label>
+        <div className="control-help">
+          <label className="testtools__label" htmlFor={modelId}>
+            {API_KEY_PANEL_STRINGS.modelLabel}
+          </label>
+          <InfoTooltip entry={CONTROL_HELP.model} />
+        </div>
         <select
           id={modelId}
           className="field-input testtools__select"
@@ -218,9 +226,12 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
       </div>
 
       <div className="testtools__field">
-        <label className="testtools__label" htmlFor={keyId}>
-          {API_KEY_PANEL_STRINGS.keyLabel}
-        </label>
+        <div className="control-help">
+          <label className="testtools__label" htmlFor={keyId}>
+            {API_KEY_PANEL_STRINGS.keyLabel}
+          </label>
+          <InfoTooltip entry={CONTROL_HELP.apiKey} />
+        </div>
         <div className="testtools__key-row">
           {/* Masked by default so the key is not shown in plain text; the reveal
               toggle flips it to text so a saved key can be confirmed. */}
@@ -244,6 +255,7 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
               ? API_KEY_PANEL_STRINGS.revealHide
               : API_KEY_PANEL_STRINGS.revealShow}
           </button>
+          <InfoTooltip entry={CONTROL_HELP.revealKey} />
         </div>
         {/* Tells the user the key persists locally, so a dotted field after a
             failed run or reload is not mistaken for a lost value. */}
@@ -253,27 +265,36 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
       </div>
 
       <div className="testtools__buttons" role="group" aria-label={API_KEY_PANEL_STRINGS.presetGroupLabel}>
-        <button
-          type="button"
-          className="btn testtools__btn"
-          onClick={() => handleKey(API_KEY_PRESETS.none)}
-        >
-          {API_KEY_PANEL_STRINGS.presetNone}
-        </button>
-        <button
-          type="button"
-          className="btn testtools__btn"
-          onClick={() => handleKey(API_KEY_PRESETS.valid)}
-        >
-          {API_KEY_PANEL_STRINGS.presetValid}
-        </button>
-        <button
-          type="button"
-          className="btn testtools__btn"
-          onClick={() => handleKey(API_KEY_PRESETS.invalid)}
-        >
-          {API_KEY_PANEL_STRINGS.presetInvalid}
-        </button>
+        <span className="control-help">
+          <button
+            type="button"
+            className="btn testtools__btn"
+            onClick={() => handleKey(API_KEY_PRESETS.none)}
+          >
+            {API_KEY_PANEL_STRINGS.presetNone}
+          </button>
+          <InfoTooltip entry={CONTROL_HELP.presetNone} />
+        </span>
+        <span className="control-help">
+          <button
+            type="button"
+            className="btn testtools__btn"
+            onClick={() => handleKey(API_KEY_PRESETS.valid)}
+          >
+            {API_KEY_PANEL_STRINGS.presetValid}
+          </button>
+          <InfoTooltip entry={CONTROL_HELP.presetValid} />
+        </span>
+        <span className="control-help">
+          <button
+            type="button"
+            className="btn testtools__btn"
+            onClick={() => handleKey(API_KEY_PRESETS.invalid)}
+          >
+            {API_KEY_PANEL_STRINGS.presetInvalid}
+          </button>
+          <InfoTooltip entry={CONTROL_HELP.presetInvalid} />
+        </span>
       </div>
     </section>
   )

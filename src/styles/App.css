@@ -854,6 +854,35 @@
   color: var(--color-text-secondary);
 }
 
+/* ── Control help (ⓘ) inline alignment ──────────────────────── */
+/* grain: wire the per-control ⓘ help trigger next to each label, heading, or
+ * control it explains. A tiny inline flex row keeps the icon on the same line as
+ * its target. Spacing comes from tokens; the flex row itself is an implementation
+ * layout setting, like the other control rows in this sheet. */
+.control-help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* A block field label (with its own bottom margin) paired with its ⓘ: the
+ * wrapper takes over the label→input spacing so the icon lines up with the
+ * label. */
+.control-help--field-label {
+  display: flex;
+  margin-bottom: var(--space-sm);
+}
+
+.control-help--field-label > .url-form__label {
+  margin-bottom: 0;
+}
+
+/* When the ⓘ sits inside a row of stretched controls (the key input + reveal
+ * toggle), keep the small icon vertically centred rather than stretched. */
+.testtools__key-row > .info-tooltip {
+  align-self: center;
+}
+
 /* ── Help dialog ────────────────────────────────────────────── */
 /* Unified help modal (spec: per-feature help system, unified help screen). All design
  * values come from tokens; the fixed full-viewport positioning, z-index and the

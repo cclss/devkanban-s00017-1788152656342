@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import UrlForm, { URL_FORM_STRINGS, isHttpUrl } from './UrlForm'
 import { MAX_SAVED_URLS, readUrlHistory } from './url-history'
+import { CONTROL_HELP } from './control-help'
 import type { StartResult } from '../state/stage'
 
 afterEach(() => {
@@ -209,6 +210,48 @@ describe('UrlForm — saved addresses (up to 5)', () => {
     expect(stored).toHaveLength(MAX_SAVED_URLS)
     expect(stored[0]).toBe('https://site-6.com')
     expect(stored).not.toContain('https://site-1.com')
+  })
+})
+
+describe('UrlForm — per-control ⓘ help', () => {
+  function helpTrigger(entry: { title: string }) {
+    return screen.getByRole('button', { name: `Help: ${entry.title}` })
+  }
+
+  it('renders an accessible ⓘ trigger for the URL input and the start button', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    const urlHelp = helpTrigger(CONTROL_HELP.urlInput)
+    expect(urlHelp.tagName).toBe('BUTTON')
+    expect(urlHelp.getAttribute('aria-expanded')).toBe('false')
+    expect(helpTrigger(CONTROL_HELP.startDiagnosis)).toBeDefined()
+    // Help copy is not shown until the trigger is activated.
+    expect(screen.queryByText(CONTROL_HELP.urlInput.body)).toBeNull()
+  })
+
+  it('reveals the matching help body when a ⓘ trigger is activated', () => {
+    render(<UrlForm stage="idle" onStart={vi.fn(() => started)} onReset={vi.fn()} />)
+
+    fireEvent.click(helpTrigger(CONTROL_HELP.startDiagnosis))
+    expect(screen.getByText(CONTROL_HELP.startDiagnosis.body)).toBeDefined()
+  })
+
+  it('renders the saved-addresses ⓘ help without breaking the start control', () => {
+    window.localStorage.setItem(
+      'landing_grader_url_history',
+      JSON.stringify(['https://saved-1.com']),
+    )
+    const onStart = vi.fn<(url: string) => StartResult>(() => started)
+    render(<UrlForm stage="idle" onStart={onStart} onReset={vi.fn()} />)
+
+    fireEvent.click(helpTrigger(CONTROL_HELP.savedUrls))
+    expect(screen.getByText(CONTROL_HELP.savedUrls.body)).toBeDefined()
+    // The start control still works after wiring the help icons.
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
+    })
+    fireEvent.click(getStartButton())
+    expect(onStart).toHaveBeenCalledWith('https://example.com')
   })
 })
 
