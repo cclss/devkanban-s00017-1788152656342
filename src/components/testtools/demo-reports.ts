@@ -210,6 +210,8 @@ export const demoDonePartialReport: AnalysisReport = {
   llmAxes: null,
   screenshots: [desktopShot, mobileShot],
   partialReason: 'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+  partialDetail:
+    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.',
 }
 
 /** `error-load` — the page never loaded, so only the Korean message is shown. */
@@ -217,6 +219,8 @@ export const demoErrorLoadReport: LoadErrorReport = {
   outcome: 'error-load',
   url: 'http://127.0.0.1:3000',
   message: '페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.',
+  detail:
+    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.',
   statusCode: 400,
 }
 

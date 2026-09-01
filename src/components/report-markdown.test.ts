@@ -104,3 +104,21 @@ describe('buildReportMarkdown — done-partial (60-point scale)', () => {
     expect(md).toContain('[통과] 페이지 타이틀')
   })
 })
+
+describe('buildReportMarkdown — partial-result detail', () => {
+  const DETAIL =
+    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.'
+  const md = buildReportMarkdown({ ...donePartialReport, partialDetail: DETAIL })
+
+  it('carries the detailed failure reason in the guidance block and score summary', () => {
+    // In the top guidance blockquote…
+    expect(md).toContain(`> ${DETAIL}`)
+    // …and as an explicit summary line.
+    expect(md).toContain(`- 부분 결과 상세: ${DETAIL}`)
+  })
+
+  it('omits the detail line entirely when no partialDetail is present', () => {
+    const plain = buildReportMarkdown(donePartialReport)
+    expect(plain).not.toContain('부분 결과 상세')
+  })
+})

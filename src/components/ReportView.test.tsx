@@ -131,6 +131,39 @@ describe('ReportView — error-load', () => {
   })
 })
 
+describe('ReportView — failure detail disclosure', () => {
+  const LOAD_DETAIL =
+    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.'
+  const PARTIAL_DETAIL =
+    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.'
+
+  it('shows a "자세히 보기" disclosure with the load-failure detail', () => {
+    render(<ReportView report={{ ...errorLoadReport, detail: LOAD_DETAIL }} />)
+    // Headline message is still shown, and the detail is available in the DOM.
+    expect(screen.getByText(errorLoadReport.message)).toBeDefined()
+    expect(screen.getByText(REPORT_VIEW_STRINGS.detailToggle)).toBeDefined()
+    expect(screen.getByText(LOAD_DETAIL)).toBeDefined()
+  })
+
+  it('shows the partial-result detail behind the same disclosure', () => {
+    render(
+      <ReportView report={{ ...donePartialReport, partialDetail: PARTIAL_DETAIL }} />,
+    )
+    expect(screen.getByText(donePartialReport.partialReason!)).toBeDefined()
+    expect(screen.getByText(REPORT_VIEW_STRINGS.detailToggle)).toBeDefined()
+    expect(screen.getByText(PARTIAL_DETAIL)).toBeDefined()
+  })
+
+  it('omits the disclosure when no detail is present', () => {
+    // The confirmed fixtures carry no detail, so nothing to expand.
+    render(<ReportView report={errorLoadReport} />)
+    expect(screen.queryByText(REPORT_VIEW_STRINGS.detailToggle)).toBeNull()
+    cleanup()
+    render(<ReportView report={donePartialReport} />)
+    expect(screen.queryByText(REPORT_VIEW_STRINGS.detailToggle)).toBeNull()
+  })
+})
+
 describe('ReportView — markdown download', () => {
   it('hands downloadBlob a Blob and the landing-report filename', () => {
     render(<ReportView report={doneReport} />)

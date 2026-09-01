@@ -66,6 +66,17 @@ describe('runLoad', () => {
     if (!result.ok) expect(result.report.message).toContain('연결할 수 없습니다')
   })
 
+  it('attaches an actionable detail to a load failure', async () => {
+    const result = await runLoad('http://10.0.0.5/', { fetchImpl: okFetch() })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.report.detail).toBeDefined()
+      // The detail is richer guidance than the one-line message.
+      expect(result.report.detail!.length).toBeGreaterThan(result.report.message.length)
+      expect(result.report.detail).toContain('SSRF')
+    }
+  })
+
   it('maps an aborted (timed-out) fetch to a timeout error', async () => {
     // fetchImpl rejects only once the signal aborts, so a 1ms timeout fires.
     const fetchImpl: LoadFetch = (_url, init) =>

@@ -161,7 +161,9 @@ export interface ReportScore {
  *
  * On `done-partial`, `llmAxes` is `null` and `partialReason` explains (in
  * Korean) why the AI evaluation was dropped, so the UI can replace the AI cards
- * with a notice instead of scores.
+ * with a notice instead of scores. `partialDetail` carries the longer, actionable
+ * Korean explanation of that reason, surfaced behind a "자세히 보기" disclosure so
+ * a user can see *why* the AI step failed and what to do about it.
  */
 export interface AnalysisReport {
   /** `done` (full) or `done-partial` (auto-audit only). */
@@ -180,6 +182,12 @@ export interface AnalysisReport {
   screenshots: Screenshot[]
   /** Korean reason the AI step was dropped; present only on `done-partial`. */
   partialReason?: string
+  /**
+   * Korean, actionable detail explaining the partial-result cause (what failed
+   * and how to fix it). Present only on `done-partial`; shown behind a "자세히
+   * 보기" disclosure so the terse `partialReason` stays scannable.
+   */
+  partialDetail?: string
 }
 
 /**
@@ -195,6 +203,13 @@ export interface LoadErrorReport {
   message: string
   /** HTTP-style status code when one is available. */
   statusCode?: number
+  /**
+   * Korean, actionable detail explaining the load failure (what went wrong and
+   * how to fix it), surfaced behind a "자세히 보기" disclosure so the terse
+   * `message` stays scannable. Absent on synthetic client-side failures that
+   * carry only the shared message.
+   */
+  detail?: string
 }
 
 /**

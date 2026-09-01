@@ -70,6 +70,8 @@ export const REPORT_VIEW_STRINGS = {
   suggestionLabel: '제안',
   /** Markdown download button. */
   download: '마크다운 리포트 다운로드',
+  /** Disclosure toggle revealing the detailed failure reason. */
+  detailToggle: '실패 사유 자세히 보기',
   /** Accessible label for the error card region. */
   errorLabel: '진단 실패',
   /** Screenshot viewport tab labels. */
@@ -78,6 +80,23 @@ export const REPORT_VIEW_STRINGS = {
 
 /** MIME type for the downloaded markdown file. */
 const MARKDOWN_MIME = 'text/markdown;charset=utf-8'
+
+/**
+ * Expandable "자세히 보기" disclosure carrying the detailed failure reason. Kept
+ * collapsed by default so the terse headline message/notice stays scannable, and
+ * renders nothing when there is no detail (e.g. a synthetic client-side error).
+ */
+function FailureDetail({ detail }: { detail: string | undefined }) {
+  if (detail === undefined || detail === '') return null
+  return (
+    <details className="report-detail">
+      <summary className="report-detail__summary">
+        {REPORT_VIEW_STRINGS.detailToggle}
+      </summary>
+      <p className="report-detail__body">{detail}</p>
+    </details>
+  )
+}
 
 /** Renders the single Korean error card for an `error-load` result. */
 function LoadError({ report }: { report: LoadErrorReport }) {
@@ -91,6 +110,7 @@ function LoadError({ report }: { report: LoadErrorReport }) {
         {report.statusCode !== undefined ? (
           <p className="report-error__code">상태 코드: {report.statusCode}</p>
         ) : null}
+        <FailureDetail detail={report.detail} />
       </div>
     </section>
   )
@@ -210,7 +230,8 @@ function AnalysisReportView({
           </div>
         ) : (
           <div className="grader-card grader-card--muted report-partial-notice" role="status">
-            {report.partialReason}
+            <p className="report-partial-notice__reason">{report.partialReason}</p>
+            <FailureDetail detail={report.partialDetail} />
           </div>
         )}
       </div>

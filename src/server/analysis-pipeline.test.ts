@@ -238,6 +238,19 @@ describe('runAnalysis — AI failure → done-partial', () => {
     expect(report.partialReason).toContain('API 키 오류로')
   })
 
+  it('attaches the actionable detail for the AI-failure reason', async () => {
+    const invalidKey: AiEvaluator = async () => ({ ok: false, reason: 'invalid-key' })
+    const events = await collect({
+      load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: invalidKey,
+    })
+    const report = resultOf(events) as AnalysisReport
+    expect(report.partialDetail).toBeDefined()
+    // Detail is the richer explanation, distinct from the terse reason line.
+    expect(report.partialDetail).toContain('거부')
+    expect(report.partialDetail).not.toBe(report.partialReason)
+  })
+
   it('routes a rate-limit failure to its own partial copy', async () => {
     const rateLimited: AiEvaluator = async () => ({ ok: false, reason: 'rate-limit' })
     const events = await collect({

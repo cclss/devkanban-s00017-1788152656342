@@ -1059,8 +1059,33 @@
 
 /* Partial-result notice replacing the AI cards on a done-partial report. */
 .report-partial-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
   padding: var(--space-md) var(--space-lg);
   font-size: var(--text-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.report-partial-notice__reason {
+  margin: 0;
+}
+
+/* ── Failure-detail disclosure (자세히 보기) ─────────────────────
+ * Collapsed-by-default explanation of a failure reason, shared by the load-error
+ * card and the partial-result notice. Design values are tokens; the disclosure
+ * mechanics (details/summary, cursor) are implementation settings. */
+.report-detail__summary {
+  cursor: pointer;
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.report-detail__body {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-size-xs);
+  line-height: var(--line-height-base);
   color: var(--color-text-secondary);
 }
 

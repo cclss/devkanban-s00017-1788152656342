@@ -140,6 +140,9 @@ export function buildReportMarkdown(report: AnalysisReport): string {
     if (report.partialReason) {
       lines.push(`> ${report.partialReason}`)
     }
+    if (report.partialDetail) {
+      lines.push(`> ${report.partialDetail}`)
+    }
     lines.push('')
   }
 
@@ -152,6 +155,9 @@ export function buildReportMarkdown(report: AnalysisReport): string {
   )
   if (partial && report.partialReason) {
     lines.push(`- 부분 결과 사유: ${report.partialReason}`)
+  }
+  if (partial && report.partialDetail) {
+    lines.push(`- 부분 결과 상세: ${report.partialDetail}`)
   }
   lines.push('')
 
@@ -172,6 +178,9 @@ export function buildReportMarkdown(report: AnalysisReport): string {
       report.partialReason ??
         'AI 평가 결과 없음: 자동 점검 결과만 표시합니다.',
     )
+    if (report.partialDetail) {
+      lines.push(report.partialDetail)
+    }
     lines.push('')
   }
 

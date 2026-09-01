@@ -70,6 +70,34 @@ export function loadErrorMessage(
   return statusCode === undefined ? base : `${base} (${statusCode})`
 }
 
+/**
+ * Longer, actionable Korean detail per load-failure reason — the "why + what to
+ * do" the terse {@link loadErrorMessage} cannot carry. Surfaced behind the
+ * report's "자세히 보기" disclosure so a user who wants the specifics can see the
+ * exact cause of the load failure without cluttering the headline message.
+ */
+const LOAD_FAILURE_DETAIL: Readonly<Record<LoadFailureReason, string>> = {
+  'invalid-url':
+    'URL은 http:// 또는 https:// 로 시작하는 올바른 형식이어야 합니다. 주소에 오타가 없는지 확인한 뒤 다시 진단하세요.',
+  'blocked-host':
+    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.',
+  'private-address':
+    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.',
+  'dns-failure':
+    '입력한 주소의 도메인을 확인하지 못했습니다. 도메인 철자와 DNS 설정을 확인한 뒤 다시 진단하세요.',
+  timeout:
+    '페이지가 제한 시간 안에 응답하지 않았습니다. 페이지가 정상 동작하는지 확인하고 잠시 후 다시 시도하세요.',
+  network:
+    '페이지 서버에 연결하지 못했습니다. 주소가 맞는지, 서버가 응답 가능한 상태인지 확인하세요.',
+  'http-error':
+    '페이지 서버가 정상(2xx)이 아닌 상태 코드를 반환했습니다. 페이지 URL이 올바른지, 접근 권한이 필요한 페이지가 아닌지 확인하세요.',
+} as const
+
+/** The full Korean load-failure detail for `reason` (see {@link LOAD_FAILURE_DETAIL}). */
+export function loadFailureDetail(reason: LoadFailureReason): string {
+  return LOAD_FAILURE_DETAIL[reason]
+}
+
 /** Shared prefix for every partial-result reason. */
 export const PARTIAL_REASON_PREFIX = 'AI 평가 결과 없음: '
 
@@ -90,4 +118,26 @@ export const PARTIAL_REASON_SUFFIX = ' 자동 점검 결과만 표시합니다.'
  */
 export function partialReasonMessage(reason: AiFailureReason): string {
   return `${PARTIAL_REASON_PREFIX}${PARTIAL_CAUSE[reason]}${PARTIAL_REASON_SUFFIX}`
+}
+
+/**
+ * Longer, actionable Korean detail per AI-failure reason — the "why + what to
+ * do" the terse {@link partialReasonMessage} cannot carry. Surfaced behind the
+ * report's "자세히 보기" disclosure so a user who wants to know *exactly* why the
+ * AI evaluation was dropped (and how to recover it) can see the specifics.
+ */
+const AI_FAILURE_DETAIL: Readonly<Record<AiFailureReason, string>> = {
+  'missing-key':
+    'AI 평가를 실행하려면 API 키가 필요합니다. 테스트 도구 패널에서 공급자와 모델을 선택하고 유효한 API 키를 입력한 뒤 다시 진단하세요.',
+  'invalid-key':
+    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.',
+  'rate-limit':
+    '공급자의 API 사용 한도(요청 수·토큰)를 초과했습니다. 잠시 후 다시 시도하거나 공급자 콘솔에서 사용량 한도를 확인하세요.',
+  'parse-failure':
+    'AI가 응답을 반환했지만 정해진 JSON 형식으로 해석하지 못했습니다. 재시도 후에도 형식이 어긋나 AI 점수를 계산하지 못했습니다.',
+} as const
+
+/** The full Korean AI-failure detail for `reason` (see {@link AI_FAILURE_DETAIL}). */
+export function aiFailureDetail(reason: AiFailureReason): string {
+  return AI_FAILURE_DETAIL[reason]
 }

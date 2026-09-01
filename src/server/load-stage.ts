@@ -18,7 +18,11 @@
  */
 import type { LoadErrorReport, Screenshot } from '../core/report'
 import { checkUrl, type SsrfGuardOptions } from './ssrf-guard'
-import { loadErrorMessage, type LoadFailureReason } from './analysis-copy'
+import {
+  loadErrorMessage,
+  loadFailureDetail,
+  type LoadFailureReason,
+} from './analysis-copy'
 
 /** Minimal response shape the load stage needs from a fetch. */
 export interface LoadFetchResponse {
@@ -86,6 +90,7 @@ function failure(
       outcome: 'error-load',
       url,
       message: loadErrorMessage(reason, statusCode),
+      detail: loadFailureDetail(reason),
       ...(statusCode !== undefined ? { statusCode } : {}),
     },
   }

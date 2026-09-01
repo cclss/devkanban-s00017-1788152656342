@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { loadErrorMessage, partialReasonMessage } from './analysis-copy'
+import {
+  aiFailureDetail,
+  loadErrorMessage,
+  loadFailureDetail,
+  partialReasonMessage,
+} from './analysis-copy'
+import type { AiFailureReason, LoadFailureReason } from './analysis-copy'
 
 /**
  * The Korean load-error / partial copy is the user-facing failure surface. These
@@ -46,5 +52,60 @@ describe('partialReasonMessage', () => {
     )
     expect(partialReasonMessage('rate-limit')).toContain('API 사용 한도를 초과')
     expect(partialReasonMessage('parse-failure')).toContain('AI 응답을 해석하지 못해')
+  })
+})
+
+describe('loadFailureDetail', () => {
+  const REASONS: LoadFailureReason[] = [
+    'invalid-url',
+    'blocked-host',
+    'private-address',
+    'dns-failure',
+    'timeout',
+    'network',
+    'http-error',
+  ]
+
+  it('returns a non-empty, actionable detail for every load-failure reason', () => {
+    for (const reason of REASONS) {
+      const detail = loadFailureDetail(reason)
+      expect(detail.length).toBeGreaterThan(0)
+      // Detail is richer than the one-line message (guidance, not just a cause).
+      expect(detail.length).toBeGreaterThan(loadErrorMessage(reason).length)
+    }
+  })
+
+  it('shares the SSRF guidance for private-address and blocked-host', () => {
+    expect(loadFailureDetail('private-address')).toBe(loadFailureDetail('blocked-host'))
+    expect(loadFailureDetail('private-address')).toContain('SSRF')
+  })
+
+  it('explains the http/timeout causes concretely', () => {
+    expect(loadFailureDetail('http-error')).toContain('상태 코드')
+    expect(loadFailureDetail('timeout')).toContain('제한 시간')
+  })
+})
+
+describe('aiFailureDetail', () => {
+  const REASONS: AiFailureReason[] = [
+    'missing-key',
+    'invalid-key',
+    'rate-limit',
+    'parse-failure',
+  ]
+
+  it('returns a non-empty, actionable detail for every AI-failure reason', () => {
+    for (const reason of REASONS) {
+      const detail = aiFailureDetail(reason)
+      expect(detail.length).toBeGreaterThan(0)
+      expect(detail.length).toBeGreaterThan(partialReasonMessage(reason).length)
+    }
+  })
+
+  it('explains the key and rate-limit causes concretely', () => {
+    expect(aiFailureDetail('missing-key')).toContain('API 키')
+    expect(aiFailureDetail('invalid-key')).toContain('거부')
+    expect(aiFailureDetail('rate-limit')).toContain('한도')
+    expect(aiFailureDetail('parse-failure')).toContain('JSON')
   })
 })

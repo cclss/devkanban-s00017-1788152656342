@@ -33,7 +33,7 @@ import {
   type ReportResult,
   type Screenshot,
 } from '../core/report'
-import { partialReasonMessage } from './analysis-copy'
+import { aiFailureDetail, partialReasonMessage } from './analysis-copy'
 import { runLoad, type LoadStageOptions } from './load-stage'
 import { runAudit, type AuditResult } from './audit-stage'
 import {
@@ -159,6 +159,7 @@ function buildPartialReport(
     llmAxes: null,
     screenshots,
     partialReason: partialReasonMessage(ai.reason),
+    partialDetail: aiFailureDetail(ai.reason),
   }
 }
 
