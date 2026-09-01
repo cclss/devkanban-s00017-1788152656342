@@ -16,19 +16,19 @@ import { AUDIT_CATEGORY_IDS, type AuditCategoryId, type CheckStatus } from '../c
  */
 
 const CLEAN_HTML = `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <title>좋은 랜딩 페이지 제목</title>
-  <meta name="description" content="페이지 요약 설명입니다.">
+  <title>A good landing page title</title>
+  <meta name="description" content="A summary description of the page.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta property="og:title" content="공유 제목">
+  <meta property="og:title" content="Share title">
   <meta property="og:image" content="https://cdn.example.com/og.png">
   <style>@media (max-width: 600px) { body { font-size: 14px; } }</style>
 </head>
 <body>
-  <h1>대표 제목</h1>
-  <img src="https://cdn.example.com/a.png" alt="설명" loading="lazy">
-  <label for="email">이메일</label>
+  <h1>Main heading</h1>
+  <img src="https://cdn.example.com/a.png" alt="Description" loading="lazy">
+  <label for="email">Email</label>
   <input id="email" type="email">
 </body>
 </html>`
@@ -66,7 +66,7 @@ describe('CHECK_REGISTRY shape', () => {
     }
   })
 
-  it('uses unique, kebab ids and non-empty Korean labels', () => {
+  it('uses unique, kebab ids and non-empty labels', () => {
     const ids = CHECK_REGISTRY.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     for (const check of CHECK_REGISTRY) {
@@ -127,7 +127,7 @@ describe('evaluate outcomes', () => {
 
   it('warns on multiple h1 and a zoom-locked viewport', () => {
     const html =
-      '<html lang="ko"><head><title>제목이 충분히 긴 페이지</title>' +
+      '<html lang="en"><head><title>A page with a sufficiently long title</title>' +
       '<meta name="viewport" content="width=device-width, user-scalable=no"></head>' +
       '<body><h1>A</h1><h1>B</h1></body></html>'
     const status = statusMap(html, 'https://x/')
@@ -137,9 +137,9 @@ describe('evaluate outcomes', () => {
 
   it('flags mixed content and unsafe blank links as problems', () => {
     const html =
-      '<html lang="ko"><head><title>혼합 콘텐츠 테스트 페이지</title></head><body>' +
+      '<html lang="en"><head><title>A mixed-content test page</title></head><body>' +
       '<img src="http://insecure/a.png" alt="x">' +
-      '<a href="https://e" target="_blank">위험</a></body></html>'
+      '<a href="https://e" target="_blank">Risky</a></body></html>'
     const status = statusMap(html, 'https://secure/')
     expect(status['security-mixed-content']).toBe('fail')
     expect(status['security-external-link-safety']).toBe('warn')

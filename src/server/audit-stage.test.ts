@@ -12,18 +12,18 @@ import { AUDIT_CATEGORY_IDS, AUDIT_MAX_SCORE, CheckItem } from '../core/report'
 
 /** Passes every applicable registry check across all five categories → 60/60. */
 const CLEAN_HTML = `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <title>훌륭한 랜딩 페이지 예시입니다</title>
-  <meta name="description" content="아주 좋은 페이지 설명입니다">
+  <title>An excellent landing page example</title>
+  <meta name="description" content="A very good page description">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta property="og:title" content="공유 타이틀">
+  <meta property="og:title" content="Share title">
   <meta property="og:image" content="https://example.com/og.png">
   <style>@media (max-width: 600px) { body { color: black } }</style>
 </head>
 <body>
-  <h1>대표 제목</h1>
-  <img src="https://example.com/a.png" alt="설명" loading="lazy">
+  <h1>Main heading</h1>
+  <img src="https://example.com/a.png" alt="Description" loading="lazy">
 </body>
 </html>`
 
@@ -83,13 +83,13 @@ describe('runAudit', () => {
   })
 
   it('skips the image-alt check when the page has no images', () => {
-    const result = runAudit('<html lang="ko"><title>x</title></html>', 'https://x.io/')
+    const result = runAudit('<html lang="en"><title>x</title></html>', 'https://x.io/')
     const a11y = result.categories.find((c) => c.id === 'accessibility')!
     expect(check(a11y.checks, 'a11y-img-alt').status).toBe('skip')
   })
 
   it('warns on images missing alt text', () => {
-    const html = '<html lang="ko"><title>x</title><body><img src="a.png"></body></html>'
+    const html = '<html lang="en"><title>x</title><body><img src="a.png"></body></html>'
     const result = runAudit(html, 'https://x.io/')
     const a11y = result.categories.find((c) => c.id === 'accessibility')!
     expect(check(a11y.checks, 'a11y-img-alt').status).toBe('warn')

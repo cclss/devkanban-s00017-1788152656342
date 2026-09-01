@@ -8,26 +8,26 @@ import { buildAuditContext } from './audit-context'
  */
 
 const RICH_HTML = `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <title>좋은 랜딩 페이지 제목</title>
-  <meta name="description" content="설명입니다">
+  <title>A good landing page title</title>
+  <meta name="description" content="A description">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta property="og:title" content="공유 제목">
+  <meta property="og:title" content="Share title">
   <meta property="og:image" content="https://cdn.example.com/og.png">
   <style>@media (max-width: 600px) { body { font-size: 14px; } }</style>
   <script src="https://cdn.example.com/app.js"></script>
 </head>
 <body>
-  <h1>대표 제목</h1>
-  <h2>소제목</h2>
-  <img src="https://cdn.example.com/a.png" alt="설명" loading="lazy">
-  <img src="https://cdn.example.com/b.png" alt="설명2">
-  <a href="https://ext.example.com" target="_blank" rel="noopener">외부</a>
-  <a href="https://other.example.com" target="_blank">위험한 외부</a>
-  <label for="email">이메일</label>
+  <h1>Main heading</h1>
+  <h2>Subheading</h2>
+  <img src="https://cdn.example.com/a.png" alt="Description" loading="lazy">
+  <img src="https://cdn.example.com/b.png" alt="Description 2">
+  <a href="https://ext.example.com" target="_blank" rel="noopener">External</a>
+  <a href="https://other.example.com" target="_blank">Risky external</a>
+  <label for="email">Email</label>
   <input id="email" type="email">
-  <input type="text" aria-label="이름">
+  <input type="text" aria-label="Name">
   <input type="hidden" name="csrf">
 </body>
 </html>`
@@ -42,11 +42,11 @@ describe('buildAuditContext', () => {
 
   it('extracts lang, title and meta tags', () => {
     const ctx = buildAuditContext(RICH_HTML, 'https://example.com/')
-    expect(ctx.lang).toBe('ko')
-    expect(ctx.title).toBe('좋은 랜딩 페이지 제목')
-    expect(ctx.meta.description).toBe('설명입니다')
+    expect(ctx.lang).toBe('en')
+    expect(ctx.title).toBe('A good landing page title')
+    expect(ctx.meta.description).toBe('A description')
     expect(ctx.meta.viewport).toBe('width=device-width, initial-scale=1')
-    expect(ctx.meta.ogTitle).toBe('공유 제목')
+    expect(ctx.meta.ogTitle).toBe('Share title')
     expect(ctx.meta.ogImage).toBe('https://cdn.example.com/og.png')
   })
 

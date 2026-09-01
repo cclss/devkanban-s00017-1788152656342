@@ -3,22 +3,23 @@
  *
  * A single declarative list of checks — five categories, worth 60 points
  * combined in a later scoring grain — where every check is a pure function of one
- * {@link AuditContext}. Each entry declares its stable `id`, its `category`, a
- * Korean `label`, and an `evaluate(ctx)` that returns a
- * {@link ../core/report#CheckStatus} plus Korean `message` and (for actionable
+ * {@link AuditContext}. Each entry declares its stable `id`, its `category`, an
+ * English `label`, and an `evaluate(ctx)` that returns a
+ * {@link ../core/report#CheckStatus} plus an English `message` and (for actionable
  * results) a `tip`. This module owns *what is checked and what the user is told*;
  * it does not fetch, score, or render — the pipeline feeds it a context and reads
  * the outcomes.
  *
- * Category split (22 total): SEO 5 / 성능 4 / 모바일 4 / 보안 4 / 접근성 5.
+ * Category split (22 total): SEO 5 / Performance 4 / Mobile 4 / Security 4 /
+ * Accessibility 5.
  *
  * `skip` is a first-class outcome: a check that cannot apply to this page (no
  * images to alt-check, no viewport to inspect, a non-HTTPS page for a mixed-
  * content check) returns `skip` and is normalised out of the denominator by the
  * scorer, rather than being counted as a pass or a fail.
  *
- * All Korean copy here is confirmed user-facing domain content (mirroring the
- * report labels), recorded in the design spec — it is not a design token.
+ * All copy here is confirmed user-facing domain content (mirroring the report
+ * labels), recorded in the design spec — it is not a design token.
  *
  * Boundary: standalone backend module reusing only `core/report` types and the
  * {@link AuditContext}. Pure functions throughout.
@@ -30,13 +31,13 @@ import type {
 } from '../core/report'
 import type { AuditContext } from './audit-context'
 
-/** The outcome of one check: a status plus Korean copy (and optional tip). */
+/** The outcome of one check: a status plus English copy (and optional tip). */
 export interface CheckResult {
   /** Pass / warn / fail, or `skip` when the check does not apply. */
   status: CheckStatus
-  /** Korean one-line explanation of the result. */
+  /** English one-line explanation of the result. */
   message: string
-  /** Korean improvement tip; present for `warn`/`fail`, absent otherwise. */
+  /** English improvement tip; present for `warn`/`fail`, absent otherwise. */
   tip?: string
 }
 
@@ -46,7 +47,7 @@ export interface CheckDefinition {
   id: string
   /** Which auto-audit category this check contributes to. */
   category: AuditCategoryId
-  /** Korean label of what is checked. */
+  /** English label of what is checked. */
   label: string
   /** Pure evaluation of this check against a parsed page context. */
   evaluate: (ctx: AuditContext) => CheckResult
@@ -70,376 +71,376 @@ const SEO_CHECKS: CheckDefinition[] = [
   {
     id: 'seo-title',
     category: 'seo',
-    label: '타이틀 태그',
+    label: 'Title tag',
     evaluate: (ctx) =>
       ctx.title.length > 0
-        ? { status: 'pass', message: '타이틀 태그가 설정되어 있습니다.' }
+        ? { status: 'pass', message: 'The title tag is set.' }
         : {
             status: 'fail',
-            message: '타이틀 태그가 비어 있거나 없습니다.',
-            tip: '검색 결과에 노출될 고유한 타이틀을 추가하세요.',
+            message: 'The title tag is empty or missing.',
+            tip: 'Add a unique title that will appear in search results.',
           },
   },
   {
     id: 'seo-title-length',
     category: 'seo',
-    label: '타이틀 길이',
+    label: 'Title length',
     evaluate: (ctx) => {
       if (ctx.title.length === 0) {
-        return { status: 'skip', message: '타이틀이 없어 길이를 평가할 수 없습니다.' }
+        return { status: 'skip', message: 'There is no title, so its length cannot be evaluated.' }
       }
       if (ctx.title.length >= TITLE_MIN && ctx.title.length <= TITLE_MAX) {
-        return { status: 'pass', message: '타이틀 길이가 권장 범위입니다.' }
+        return { status: 'pass', message: 'The title length is within the recommended range.' }
       }
       return {
         status: 'warn',
         message:
           ctx.title.length < TITLE_MIN
-            ? '타이틀이 너무 짧습니다.'
-            : '타이틀이 너무 깁니다.',
-        tip: `타이틀을 ${TITLE_MIN}~${TITLE_MAX}자 사이로 작성하세요.`,
+            ? 'The title is too short.'
+            : 'The title is too long.',
+        tip: `Write a title between ${TITLE_MIN} and ${TITLE_MAX} characters.`,
       }
     },
   },
   {
     id: 'seo-meta-description',
     category: 'seo',
-    label: '메타 설명',
+    label: 'Meta description',
     evaluate: (ctx) =>
       ctx.meta.description !== null
-        ? { status: 'pass', message: '메타 설명이 설정되어 있습니다.' }
+        ? { status: 'pass', message: 'A meta description is set.' }
         : {
             status: 'fail',
-            message: '메타 설명 태그가 없습니다.',
-            tip: '페이지 내용을 요약한 meta description을 추가하세요.',
+            message: 'The meta description tag is missing.',
+            tip: 'Add a meta description that summarizes the page content.',
           },
   },
   {
     id: 'seo-h1',
     category: 'seo',
-    label: '대표 제목(h1)',
+    label: 'Main heading (h1)',
     evaluate: (ctx) => {
       if (ctx.headings.h1Count === 1) {
-        return { status: 'pass', message: '대표 제목(h1)이 하나 있습니다.' }
+        return { status: 'pass', message: 'There is exactly one main heading (h1).' }
       }
       if (ctx.headings.h1Count === 0) {
         return {
           status: 'fail',
-          message: '대표 제목(h1) 태그가 없습니다.',
-          tip: 'h1 태그로 페이지의 대표 제목을 하나 지정하세요.',
+          message: 'The main heading (h1) tag is missing.',
+          tip: 'Use an h1 tag to define a single main heading for the page.',
         }
       }
       return {
         status: 'warn',
-        message: '대표 제목(h1)이 여러 개입니다.',
-        tip: 'h1은 페이지당 하나만 사용하세요.',
+        message: 'There are multiple main headings (h1).',
+        tip: 'Use only one h1 per page.',
       }
     },
   },
   {
     id: 'seo-open-graph',
     category: 'seo',
-    label: '오픈그래프 공유 태그',
+    label: 'Open Graph sharing tags',
     evaluate: (ctx) => {
       const hasTitle = ctx.meta.ogTitle !== null
       const hasImage = ctx.meta.ogImage !== null
       if (hasTitle && hasImage) {
-        return { status: 'pass', message: '오픈그래프 공유 태그가 설정되어 있습니다.' }
+        return { status: 'pass', message: 'Open Graph sharing tags are set.' }
       }
       return {
         status: 'warn',
         message:
           hasTitle || hasImage
-            ? '오픈그래프 태그가 일부만 설정되어 있습니다.'
-            : '오픈그래프 공유 태그가 없습니다.',
-        tip: 'og:title과 og:image를 설정해 공유 시 미리보기를 개선하세요.',
+            ? 'Open Graph tags are only partially set.'
+            : 'Open Graph sharing tags are missing.',
+        tip: 'Set og:title and og:image to improve the preview when the page is shared.',
       }
     },
   },
 ]
 
-// --- 성능 Performance (4) ---------------------------------------------------
+// --- Performance (4) --------------------------------------------------------
 
 const PERFORMANCE_CHECKS: CheckDefinition[] = [
   {
     id: 'perf-html-size',
     category: 'performance',
-    label: 'HTML 문서 크기',
+    label: 'HTML document size',
     evaluate: (ctx) =>
       ctx.htmlSize <= HTML_SIZE_BUDGET
-        ? { status: 'pass', message: 'HTML 문서 크기가 적정 범위입니다.' }
+        ? { status: 'pass', message: 'The HTML document size is within a reasonable range.' }
         : {
             status: 'warn',
-            message: 'HTML 문서가 과도하게 큽니다.',
-            tip: '인라인 리소스를 분리해 초기 문서 크기를 줄이세요.',
+            message: 'The HTML document is excessively large.',
+            tip: 'Extract inline resources to reduce the initial document size.',
           },
   },
   {
     id: 'perf-external-scripts',
     category: 'performance',
-    label: '외부 스크립트 수',
+    label: 'External script count',
     evaluate: (ctx) =>
       ctx.scripts.external <= EXTERNAL_SCRIPT_BUDGET
-        ? { status: 'pass', message: '외부 스크립트 수가 적정합니다.' }
+        ? { status: 'pass', message: 'The number of external scripts is reasonable.' }
         : {
             status: 'warn',
-            message: '외부 스크립트가 많아 로딩이 느려질 수 있습니다.',
-            tip: '불필요한 외부 스크립트를 줄이거나 지연 로딩하세요.',
+            message: 'There are many external scripts, which can slow down loading.',
+            tip: 'Remove unnecessary external scripts or defer their loading.',
           },
   },
   {
     id: 'perf-inline-styles',
     category: 'performance',
-    label: '인라인 스타일 사용',
+    label: 'Inline style usage',
     evaluate: (ctx) =>
       ctx.inlineStyleCount <= INLINE_STYLE_BUDGET
-        ? { status: 'pass', message: '인라인 스타일 사용이 적정합니다.' }
+        ? { status: 'pass', message: 'Inline style usage is reasonable.' }
         : {
             status: 'warn',
-            message: '인라인 스타일이 과도하게 사용되었습니다.',
-            tip: '반복되는 인라인 스타일을 외부 CSS로 분리하세요.',
+            message: 'Inline styles are used excessively.',
+            tip: 'Move repeated inline styles into an external CSS file.',
           },
   },
   {
     id: 'perf-image-lazyload',
     category: 'performance',
-    label: '이미지 지연 로딩',
+    label: 'Image lazy loading',
     evaluate: (ctx) => {
       if (ctx.images.total === 0) {
-        return { status: 'skip', message: '이미지가 없어 지연 로딩 대상이 아닙니다.' }
+        return { status: 'skip', message: 'There are no images, so lazy loading does not apply.' }
       }
       if (ctx.images.lazyLoaded === ctx.images.total) {
-        return { status: 'pass', message: '모든 이미지가 지연 로딩을 사용합니다.' }
+        return { status: 'pass', message: 'All images use lazy loading.' }
       }
       return {
         status: 'warn',
         message:
           ctx.images.lazyLoaded > 0
-            ? '일부 이미지에만 지연 로딩이 적용되어 있습니다.'
-            : '이미지에 지연 로딩이 적용되지 않았습니다.',
-        tip: '뷰포트 밖 이미지에 loading="lazy"를 적용하세요.',
+            ? 'Lazy loading is applied to only some images.'
+            : 'Lazy loading is not applied to any images.',
+        tip: 'Add loading="lazy" to images outside the viewport.',
       }
     },
   },
 ]
 
-// --- 모바일 Mobile (4) ------------------------------------------------------
+// --- Mobile (4) -------------------------------------------------------------
 
 const MOBILE_CHECKS: CheckDefinition[] = [
   {
     id: 'mobile-viewport',
     category: 'mobile',
-    label: '반응형 뷰포트',
+    label: 'Responsive viewport',
     evaluate: (ctx) =>
       ctx.meta.viewport !== null
         ? {
             status: 'pass',
-            message: '반응형 뷰포트 메타 태그가 설정되어 있습니다.',
+            message: 'A responsive viewport meta tag is set.',
           }
         : {
             status: 'fail',
-            message: '뷰포트 메타 태그가 없어 모바일에서 확대되어 보일 수 있습니다.',
-            tip: 'width=device-width 뷰포트 메타 태그를 추가하세요.',
+            message: 'The viewport meta tag is missing, so the page may appear zoomed in on mobile.',
+            tip: 'Add a viewport meta tag with width=device-width.',
           },
   },
   {
     id: 'mobile-device-width',
     category: 'mobile',
-    label: '기기 너비 대응',
+    label: 'Device-width support',
     evaluate: (ctx) => {
       if (ctx.meta.viewport === null) {
-        return { status: 'skip', message: '뷰포트 메타 태그가 없어 평가할 수 없습니다.' }
+        return { status: 'skip', message: 'The viewport meta tag is missing, so this cannot be evaluated.' }
       }
       return /width\s*=\s*device-width/i.test(ctx.meta.viewport)
-        ? { status: 'pass', message: '뷰포트가 기기 너비에 맞춰져 있습니다.' }
+        ? { status: 'pass', message: 'The viewport is set to the device width.' }
         : {
             status: 'warn',
-            message: '뷰포트에 width=device-width가 지정되어 있지 않습니다.',
-            tip: '뷰포트 content에 width=device-width를 지정하세요.',
+            message: 'The viewport does not specify width=device-width.',
+            tip: 'Specify width=device-width in the viewport content.',
           }
     },
   },
   {
     id: 'mobile-initial-scale',
     category: 'mobile',
-    label: '초기 확대 배율',
+    label: 'Initial zoom scale',
     evaluate: (ctx) => {
       if (ctx.meta.viewport === null) {
-        return { status: 'skip', message: '뷰포트 메타 태그가 없어 평가할 수 없습니다.' }
+        return { status: 'skip', message: 'The viewport meta tag is missing, so this cannot be evaluated.' }
       }
       return /initial-scale\s*=\s*1/i.test(ctx.meta.viewport)
-        ? { status: 'pass', message: '초기 확대 배율이 1로 설정되어 있습니다.' }
+        ? { status: 'pass', message: 'The initial zoom scale is set to 1.' }
         : {
             status: 'warn',
-            message: '초기 확대 배율(initial-scale)이 설정되어 있지 않습니다.',
-            tip: '뷰포트 content에 initial-scale=1을 추가하세요.',
+            message: 'The initial zoom scale (initial-scale) is not set.',
+            tip: 'Add initial-scale=1 to the viewport content.',
           }
     },
   },
   {
     id: 'mobile-media-query',
     category: 'mobile',
-    label: '반응형 미디어 쿼리',
+    label: 'Responsive media queries',
     evaluate: (ctx) =>
       ctx.hasMediaQuery
-        ? { status: 'pass', message: '반응형 미디어 쿼리가 있습니다.' }
+        ? { status: 'pass', message: 'Responsive media queries are present.' }
         : {
             status: 'warn',
-            message: '문서에서 반응형 미디어 쿼리를 찾지 못했습니다.',
-            tip: '@media 쿼리로 화면 크기별 레이아웃을 제공하세요.',
+            message: 'No responsive media queries were found in the document.',
+            tip: 'Use @media queries to provide layouts for different screen sizes.',
           },
   },
 ]
 
-// --- 보안 Security (4) ------------------------------------------------------
+// --- Security (4) -----------------------------------------------------------
 
 const SECURITY_CHECKS: CheckDefinition[] = [
   {
     id: 'security-https',
     category: 'security',
-    label: 'HTTPS 제공',
+    label: 'HTTPS delivery',
     evaluate: (ctx) =>
       ctx.https
-        ? { status: 'pass', message: '페이지가 HTTPS로 제공됩니다.' }
+        ? { status: 'pass', message: 'The page is served over HTTPS.' }
         : {
             status: 'fail',
-            message: '페이지가 HTTPS로 제공되지 않습니다.',
-            tip: 'TLS 인증서를 적용해 HTTPS로 제공하세요.',
+            message: 'The page is not served over HTTPS.',
+            tip: 'Apply a TLS certificate to serve the page over HTTPS.',
           },
   },
   {
     id: 'security-mixed-content',
     category: 'security',
-    label: '혼합 콘텐츠',
+    label: 'Mixed content',
     evaluate: (ctx) => {
       if (!ctx.https) {
         return {
           status: 'skip',
-          message: 'HTTPS 페이지가 아니어서 혼합 콘텐츠 판단 대상이 아닙니다.',
+          message: 'This is not an HTTPS page, so mixed content does not apply.',
         }
       }
       return ctx.mixedContentCount === 0
-        ? { status: 'pass', message: '혼합 콘텐츠(http 리소스)가 없습니다.' }
+        ? { status: 'pass', message: 'There is no mixed content (http resources).' }
         : {
             status: 'fail',
-            message: '보안 페이지에 http 리소스가 포함되어 있습니다.',
-            tip: '모든 리소스를 https로 불러오도록 수정하세요.',
+            message: 'The secure page includes http resources.',
+            tip: 'Update all resources to load over https.',
           }
     },
   },
   {
     id: 'security-external-link-safety',
     category: 'security',
-    label: '새 창 링크 보안',
+    label: 'New-window link safety',
     evaluate: (ctx) => {
       if (ctx.links.blankTotal === 0) {
         return {
           status: 'skip',
-          message: '새 창으로 여는 링크가 없어 판단 대상이 아닙니다.',
+          message: 'There are no links that open in a new window, so this does not apply.',
         }
       }
       return ctx.links.blankUnsafe === 0
         ? {
             status: 'pass',
-            message: '새 창 링크에 rel="noopener"가 적용되어 있습니다.',
+            message: 'New-window links use rel="noopener".',
           }
         : {
             status: 'warn',
-            message: 'rel="noopener" 없이 새 창으로 여는 링크가 있습니다.',
-            tip: 'target="_blank" 링크에 rel="noopener"를 추가하세요.',
+            message: 'There are links that open in a new window without rel="noopener".',
+            tip: 'Add rel="noopener" to target="_blank" links.',
           }
     },
   },
   {
     id: 'security-inline-handlers',
     category: 'security',
-    label: '인라인 이벤트 핸들러',
+    label: 'Inline event handlers',
     evaluate: (ctx) =>
       !ctx.hasInlineEventHandlers
-        ? { status: 'pass', message: '인라인 이벤트 핸들러가 없습니다.' }
+        ? { status: 'pass', message: 'There are no inline event handlers.' }
         : {
             status: 'warn',
-            message: '인라인 이벤트 핸들러(onclick 등)가 사용되었습니다.',
-            tip: '이벤트는 외부 스크립트에서 바인딩해 CSP 적용을 쉽게 하세요.',
+            message: 'Inline event handlers (such as onclick) are used.',
+            tip: 'Bind events from an external script to make CSP easier to apply.',
           },
   },
 ]
 
-// --- 접근성 Accessibility (5) -----------------------------------------------
+// --- Accessibility (5) ------------------------------------------------------
 
 const ACCESSIBILITY_CHECKS: CheckDefinition[] = [
   {
     id: 'a11y-html-lang',
     category: 'accessibility',
-    label: '문서 언어',
+    label: 'Document language',
     evaluate: (ctx) =>
       ctx.lang !== null
-        ? { status: 'pass', message: 'html 요소에 lang 속성이 지정되어 있습니다.' }
+        ? { status: 'pass', message: 'The html element has a lang attribute.' }
         : {
             status: 'fail',
-            message: 'html 요소에 lang 속성이 없습니다.',
-            tip: 'html 태그에 lang="ko" 같은 언어 속성을 추가하세요.',
+            message: 'The html element has no lang attribute.',
+            tip: 'Add a language attribute such as lang="en" to the html tag.',
           },
   },
   {
     id: 'a11y-img-alt',
     category: 'accessibility',
-    label: '이미지 대체 텍스트',
+    label: 'Image alternative text',
     evaluate: (ctx) => {
       if (ctx.images.total === 0) {
-        return { status: 'skip', message: '페이지에 이미지가 없어 판단 대상이 아닙니다.' }
+        return { status: 'skip', message: 'The page has no images, so this does not apply.' }
       }
       return ctx.images.missingAlt === 0
-        ? { status: 'pass', message: '모든 이미지에 대체 텍스트가 있습니다.' }
+        ? { status: 'pass', message: 'All images have alternative text.' }
         : {
             status: 'warn',
-            message: '대체 텍스트가 없는 이미지가 있습니다.',
-            tip: '모든 의미 있는 이미지에 alt 속성을 추가하세요.',
+            message: 'Some images are missing alternative text.',
+            tip: 'Add an alt attribute to every meaningful image.',
           }
     },
   },
   {
     id: 'a11y-heading-structure',
     category: 'accessibility',
-    label: '제목 구조',
+    label: 'Heading structure',
     evaluate: (ctx) =>
       ctx.headings.totalCount > 0
-        ? { status: 'pass', message: '제목 태그로 문서 구조가 구성되어 있습니다.' }
+        ? { status: 'pass', message: 'Heading tags structure the document.' }
         : {
             status: 'fail',
-            message: '제목(heading) 태그가 없습니다.',
-            tip: 'h1~h6 제목 태그로 문서의 구조를 제공하세요.',
+            message: 'There are no heading tags.',
+            tip: 'Use h1–h6 heading tags to structure the document.',
           },
   },
   {
     id: 'a11y-form-labels',
     category: 'accessibility',
-    label: '입력 레이블',
+    label: 'Input labels',
     evaluate: (ctx) => {
       if (ctx.inputs.total === 0) {
-        return { status: 'skip', message: '입력 폼이 없어 판단 대상이 아닙니다.' }
+        return { status: 'skip', message: 'There are no input forms, so this does not apply.' }
       }
       return ctx.inputs.unlabeled === 0
         ? {
             status: 'pass',
-            message: '모든 입력 요소에 레이블이 연결되어 있습니다.',
+            message: 'All input elements have an associated label.',
           }
         : {
             status: 'fail',
-            message: '레이블이 연결되지 않은 입력 요소가 있습니다.',
-            tip: '모든 입력 요소에 label 또는 aria-label을 연결하세요.',
+            message: 'Some input elements have no associated label.',
+            tip: 'Associate a label or aria-label with every input element.',
           }
     },
   },
   {
     id: 'a11y-zoom-enabled',
     category: 'accessibility',
-    label: '화면 확대 허용',
+    label: 'Screen zoom allowed',
     evaluate: (ctx) => {
       if (ctx.meta.viewport === null) {
         return {
           status: 'skip',
-          message: '뷰포트 메타 태그가 없어 확대 설정을 평가할 수 없습니다.',
+          message: 'The viewport meta tag is missing, so the zoom setting cannot be evaluated.',
         }
       }
       const locked =
@@ -448,17 +449,17 @@ const ACCESSIBILITY_CHECKS: CheckDefinition[] = [
       return locked
         ? {
             status: 'fail',
-            message: '사용자 화면 확대가 비활성화되어 있습니다.',
-            tip: 'user-scalable=no와 maximum-scale 제한을 제거해 확대를 허용하세요.',
+            message: 'User screen zoom is disabled.',
+            tip: 'Remove user-scalable=no and maximum-scale limits to allow zooming.',
           }
-        : { status: 'pass', message: '사용자 화면 확대가 허용되어 있습니다.' }
+        : { status: 'pass', message: 'User screen zoom is allowed.' }
     },
   },
 ]
 
 /**
  * The full 22-check registry in canonical (category, then declared) order:
- * SEO 5 → 성능 4 → 모바일 4 → 보안 4 → 접근성 5.
+ * SEO 5 → Performance 4 → Mobile 4 → Security 4 → Accessibility 5.
  */
 export const CHECK_REGISTRY: readonly CheckDefinition[] = [
   ...SEO_CHECKS,
@@ -468,7 +469,7 @@ export const CHECK_REGISTRY: readonly CheckDefinition[] = [
   ...ACCESSIBILITY_CHECKS,
 ]
 
-/** How many checks each category contributes (SEO 5 / 성능 4 / … / 접근성 5). */
+/** How many checks each category contributes (SEO 5 / Performance 4 / … / Accessibility 5). */
 export const CHECK_COUNT = CHECK_REGISTRY.length
 
 /**
