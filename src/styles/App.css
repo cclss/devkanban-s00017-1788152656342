@@ -346,7 +346,7 @@
   font-size: var(--text-size-md);
 }
 
-/* Press/hover feedback for the primary action (진단 시작 / 리포트 다운로드):
+/* Press/hover feedback for the primary action (Start diagnosis / Download report):
  * darkens to the stronger accent so the click registers visibly. */
 .btn--primary:not(:disabled):hover {
   background-color: var(--color-accent-primary-hover);
@@ -1185,7 +1185,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Lead line of the partial-result notice ("AI 평가 결과 없음 …"): carries the
+/* Lead line of the partial-result notice ("No AI evaluation …"): carries the
  * weight/primary colour so it reads as the headline above the muted
  * self-explanatory detail toggle, keeping the partial state's copy hierarchy
  * clear rather than a flat block of secondary text. */
@@ -1195,7 +1195,7 @@
   color: var(--color-text-primary);
 }
 
-/* ── Failure-detail disclosure (자세히 보기) ─────────────────────
+/* ── Failure-detail disclosure (Show details) ─────────────────────
  * Collapsed-by-default explanation of a failure reason, shared by the load-error
  * card and the partial-result notice. Design values are tokens; the disclosure
  * mechanics (details/summary, cursor) are implementation settings. */

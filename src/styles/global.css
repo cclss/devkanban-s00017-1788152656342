@@ -35,7 +35,7 @@
   --color-status-neutral-soft: #f3f4f6;
   --color-status-neutral-border: #e5e7eb;
 
-  /* color-grade — overall quality tiers (우수 / 양호 / 보통 / 미흡) shown on the
+  /* color-grade — overall quality tiers (Excellent / Good / Fair / Poor) shown on the
    * grade badge + score gauge. Ordered best→worst by hue, red reserved for
    * the lowest tier. */
   --color-grade-excellent: #15803d;

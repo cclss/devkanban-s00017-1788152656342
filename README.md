@@ -3,16 +3,15 @@
 A single-page web tool that scores a landing page before release. You enter one
 URL and get, within about a minute, a hybrid quality report: a 60-point
 automated audit (SEO / performance / mobile / security / accessibility) combined
-with a 40-point AI rubric (visual / copy / CTA), plus concrete Korean
-improvement tips. The product UI copy is Korean; this README (developer-facing)
-is English.
+with a 40-point AI rubric (visual / copy / CTA), plus concrete improvement
+tips. Both the product UI and this README are in English.
 
 The analysis streams live: the server walks a separated
 `load → audit → ai → done` pipeline and emits one NDJSON stage event per
 transition, so the browser's progress stepper updates in real time. If the AI
 step fails (missing/invalid key, rate limit, parse error) the report still
-completes on the 60-point auto-audit scale ("부분 결과 원칙"), so a release
-decision is never blocked.
+completes on the 60-point auto-audit scale (the "partial-result principle"), so
+a release decision is never blocked.
 
 ## Architecture
 

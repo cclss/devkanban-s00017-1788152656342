@@ -7,13 +7,13 @@
  * the progress stepper live. It is an async generator: the HTTP layer just
  * `for await`s it and writes {@link serializeEvent} for each yield.
  *
- * Routing (Design §상태 전이 규칙):
+ * Routing (Design §state-transition rules):
  * - `load` failure (SSRF block / timeout / network / non-2xx) → a terminal
  *   `error-load` stage event + a {@link LoadErrorReport}; the audit and AI
  *   stages never run.
  * - `ai` failure (missing/invalid key, rate limit, parse failure) →
  *   `done-partial`: the report completes on the 60-point auto-audit scale only,
- *   with `llmAxes: null`, a held (`pending`) grade, and a Korean `partialReason`.
+ *   with `llmAxes: null`, a held (`pending`) grade, and a `partialReason`.
  * - Both succeed → `done`: the full 100-point report (auto-audit + AI rubric).
  *
  * Every external boundary (SSRF DNS resolver, fetch, AI evaluator, clock) is

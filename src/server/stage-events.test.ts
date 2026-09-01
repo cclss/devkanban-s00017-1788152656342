@@ -17,7 +17,7 @@ import type { LoadErrorReport } from '../core/report'
 const errorReport: LoadErrorReport = {
   outcome: 'error-load',
   url: 'http://127.0.0.1/',
-  message: '페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.',
+  message: 'Failed to load the page: Private network addresses are blocked.',
 }
 
 describe('serializeEvent / parseEvent', () => {

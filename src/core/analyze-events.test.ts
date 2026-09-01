@@ -2,8 +2,8 @@
  * Tests for the client-side NDJSON stream reader {@link readAnalyzeStream}.
  *
  * The reader must reconstruct whole {@link StageEvent}s from an arbitrary byte
- * chunking: newline boundaries that fall mid-chunk, a multi-byte character split
- * across chunks, blank/trailing lines, and an unterminated final line. It must
+ * chunking: newline boundaries that fall mid-chunk, JSON payloads split across
+ * chunks, blank/trailing lines, and an unterminated final line. It must
  * also fail loudly on a body-less response or a corrupt line. These are all
  * exercised with a hand-built web `ReadableStream`, no network.
  */
@@ -21,7 +21,7 @@ import type { LoadErrorReport } from './report'
 const errorReport: LoadErrorReport = {
   outcome: 'error-load',
   url: 'https://example.com',
-  message: '페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.',
+  message: 'Failed to load the page: Private network addresses are blocked.',
 }
 
 /** Builds a response whose body streams `bytes` in fixed-size chunks. */
@@ -71,7 +71,7 @@ describe('readAnalyzeStream', () => {
   })
 
   it('reassembles events across arbitrary byte-chunk boundaries', async () => {
-    // A tiny chunk size splits lines (and the multi-byte Korean message) apart.
+    // A tiny chunk size splits each line apart across byte-chunk boundaries.
     const events = await collect(streamingResponse(bytes, 3))
     expect(events).toHaveLength(5)
     const terminal = events[4]
