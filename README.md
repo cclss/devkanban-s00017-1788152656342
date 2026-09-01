@@ -51,8 +51,10 @@ are committed.
 | `PORT` | no (defaults to `3000`) | Port the server binds on `0.0.0.0`. The platform injects it. |
 | `ALLOW_PRIVATE_NETWORK` | no (default: unset = blocked) | `true`/`1`/`yes`/`on` permits private-network targets. |
 
-The Anthropic API key is **not** a server environment variable: users enter it in
-the browser and it is sent per request, never stored or logged server-side.
+The AI provider API key is **not** a server environment variable: users pick a
+provider (Anthropic Claude or OpenAI GPT), choose a model, and enter the matching
+key in the browser. The key is sent per request, never stored or logged
+server-side.
 
 ## Running locally (green-field)
 

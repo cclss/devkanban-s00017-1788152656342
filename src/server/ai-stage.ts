@@ -34,7 +34,13 @@ export interface AiEvaluatorInput {
   html: string
   /** The user-supplied API key, or empty/undefined when none was provided. */
   apiKey?: string
-  /** Selected model id (e.g. `claude-sonnet-5`), when chosen. */
+  /**
+   * Selected AI provider id (e.g. `anthropic` | `openai`), when chosen. Used by a
+   * routing evaluator to pick the backing model vendor; a single-vendor evaluator
+   * ignores it.
+   */
+  provider?: string
+  /** Selected model id (e.g. `claude-sonnet-5`, `gpt-4o`), when chosen. */
   model?: string
   /**
    * Captured page renderings, when available. The real evaluator sends these as

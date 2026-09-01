@@ -22,14 +22,45 @@ import {
   writeStored,
 } from './api-key-storage'
 
-/** Provider options. Anthropic only for the MVP (Design/§가정). */
-export const API_KEY_PROVIDERS = [{ id: 'anthropic', label: 'Anthropic' }] as const
-
-/** Model options (Design/§가정: no date-suffixed ids). */
-export const API_KEY_MODELS = [
-  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
-  { id: 'claude-opus-5', label: 'Claude Opus 5' },
+/** Provider options. Anthropic (Claude) and OpenAI (GPT) are both supported. */
+export const API_KEY_PROVIDERS = [
+  { id: 'anthropic', label: 'Anthropic' },
+  { id: 'openai', label: 'OpenAI' },
 ] as const
+
+/**
+ * Model options, each tagged with the provider it belongs to (Design/§가정: no
+ * date-suffixed ids). The model `<select>` shows only the models of the currently
+ * selected provider, so a Claude model is never offered while OpenAI is picked and
+ * vice versa.
+ */
+export const API_KEY_MODELS = [
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', provider: 'anthropic' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5', provider: 'anthropic' },
+  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o mini', provider: 'openai' },
+] as const
+
+/** The models offered for a given provider id (empty if the id is unknown). */
+export function modelsForProvider(
+  provider: string,
+): ReadonlyArray<(typeof API_KEY_MODELS)[number]> {
+  return API_KEY_MODELS.filter((option) => option.provider === provider)
+}
+
+/**
+ * Resolves a stored/selected model to one valid for `provider`: keeps it if it
+ * belongs to the provider, otherwise falls back to that provider's first model.
+ * Guards against a stale localStorage pair (e.g. provider=openai, model=claude-*).
+ */
+export function resolveModelForProvider(
+  provider: string,
+  model: string,
+): string {
+  const options = modelsForProvider(provider)
+  if (options.some((option) => option.id === model)) return model
+  return options[0]?.id ?? API_KEY_MODELS[0].id
+}
 
 /**
  * The three "permission" presets the key buttons apply. `none` clears the key
@@ -38,7 +69,7 @@ export const API_KEY_MODELS = [
  */
 export const API_KEY_PRESETS = {
   none: '',
-  valid: 'sk-ant-valid-demo-0000000000',
+  valid: 'sk-valid-demo-0000000000',
   invalid: 'invalid-demo-key',
 } as const
 
@@ -77,8 +108,14 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
   const [provider, setProvider] = useState(
     () => readStored(API_KEY_STORAGE_KEYS.provider) ?? DEFAULT_PROVIDER,
   )
-  const [model, setModel] = useState(
-    () => readStored(API_KEY_STORAGE_KEYS.model) ?? DEFAULT_MODEL,
+  // Seed the model from storage but reconcile it against the seeded provider, so
+  // a stale/mismatched pair never leaves the select showing a model that belongs
+  // to the other provider.
+  const [model, setModel] = useState(() =>
+    resolveModelForProvider(
+      readStored(API_KEY_STORAGE_KEYS.provider) ?? DEFAULT_PROVIDER,
+      readStored(API_KEY_STORAGE_KEYS.model) ?? DEFAULT_MODEL,
+    ),
   )
   const [apiKey, setApiKey] = useState(
     () => readStored(API_KEY_STORAGE_KEYS.apiKey) ?? '',
@@ -105,7 +142,14 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
   const handleProvider = (value: string) => {
     setProvider(value)
     writeStored(API_KEY_STORAGE_KEYS.provider, value)
-    emitChange({ provider: value, model, apiKey })
+    // Switching provider may orphan the current model (it belongs to the other
+    // vendor); reconcile to the new provider's default and persist both.
+    const nextModel = resolveModelForProvider(value, model)
+    if (nextModel !== model) {
+      setModel(nextModel)
+      writeStored(API_KEY_STORAGE_KEYS.model, nextModel)
+    }
+    emitChange({ provider: value, model: nextModel, apiKey })
   }
 
   const handleModel = (value: string) => {
@@ -152,7 +196,7 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
           value={model}
           onChange={(event) => handleModel(event.target.value)}
         >
-          {API_KEY_MODELS.map((option) => (
+          {modelsForProvider(provider).map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
             </option>

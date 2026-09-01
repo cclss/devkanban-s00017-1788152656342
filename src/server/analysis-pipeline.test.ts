@@ -125,6 +125,19 @@ describe('runAnalysis — happy path', () => {
     expect(spy.mock.calls[0][0].html).toContain('<title>x</title>')
     expect(spy.mock.calls[0][0].apiKey).toBe('sk-test')
   })
+
+  it('forwards the selected provider and model to the AI evaluator', async () => {
+    const spy = vi.fn<AiEvaluator>(async () => ({ ok: true, axes: AXES, llmScore: 30 }))
+    await collect(
+      {
+        load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+        evaluateAi: spy,
+      },
+      { url: PUBLIC_URL, apiKey: 'sk-test', provider: 'openai', model: 'gpt-4o' },
+    )
+    expect(spy.mock.calls[0][0].provider).toBe('openai')
+    expect(spy.mock.calls[0][0].model).toBe('gpt-4o')
+  })
 })
 
 describe('runAnalysis — load failure → error-load', () => {

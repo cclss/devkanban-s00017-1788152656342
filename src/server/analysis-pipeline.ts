@@ -41,7 +41,7 @@ import {
   type AiEvaluation,
   type AiEvaluator,
 } from './ai-stage'
-import { createClaudeAiEvaluator } from './claude-evaluator'
+import { createRoutingAiEvaluator } from './ai-router'
 import {
   resultEvent,
   serializeEvent,
@@ -76,13 +76,14 @@ export interface AnalysisDeps {
 }
 
 /**
- * The default AI evaluator wired into every `/api/analyze` run: the real
- * `claude-sonnet-5` rubric evaluator. It constructs the Anthropic client from
- * the per-request API key inside each call (the key never leaves that call), so
- * a single shared instance is safe. An absent/invalid key or any provider/parse
+ * The default AI evaluator wired into every `/api/analyze` run: the real,
+ * provider-routing rubric evaluator. It dispatches on the request's `provider`
+ * (Anthropic Claude or OpenAI GPT), constructing the vendor client from the
+ * per-request API key inside each call (the key never leaves that call), so a
+ * single shared instance is safe. An absent/invalid key or any provider/parse
  * failure degrades the run to `done-partial` via the standard AI-failure path.
  */
-export const DEFAULT_AI_EVALUATOR: AiEvaluator = createClaudeAiEvaluator()
+export const DEFAULT_AI_EVALUATOR: AiEvaluator = createRoutingAiEvaluator()
 
 /**
  * 100-point grade cuts. The AI-rubric and auto-audit scores combine onto a
@@ -197,6 +198,7 @@ export async function* runAnalysis(
       url: request.url,
       html: load.html,
       apiKey: request.apiKey,
+      provider: request.provider,
       model: request.model,
       screenshots,
     },
