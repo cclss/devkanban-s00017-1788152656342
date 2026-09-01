@@ -8,7 +8,7 @@
  *   calls `onStart` (no request is sent).
  * - Conflict: when the start machine reports `conflict`, the specified inline
  *   field-error is shown.
- * - Reset: terminal stages replace the start button with a "새로 진단" reset
+ * - Reset: terminal stages replace the start button with a "Start fresh" reset
  *   button wired to `onReset`; in-progress disables the start button.
  *
  * jsdom is opted into per-file so the React-free core suite keeps its fast
@@ -41,7 +41,7 @@ describe('isHttpUrl', () => {
     expect(isHttpUrl('https://example.com/path?q=1')).toBe(true)
     expect(isHttpUrl('  https://example.com  ')).toBe(true)
     expect(isHttpUrl('ftp://example.com')).toBe(false)
-    expect(isHttpUrl('그냥텍스트')).toBe(false)
+    expect(isHttpUrl('just some text')).toBe(false)
     expect(isHttpUrl('')).toBe(false)
     expect(isHttpUrl('example.com')).toBe(false)
   })
@@ -113,7 +113,7 @@ describe('UrlForm — conflict', () => {
 
     expect(onStart).toHaveBeenCalledWith('https://example.com')
     expect(screen.getByRole('alert').textContent).toBe(URL_FORM_STRINGS.conflictError)
-    expect(URL_FORM_STRINGS.conflictError).toContain('이미 분석이 진행 중입니다')
+    expect(URL_FORM_STRINGS.conflictError).toContain('An analysis is already in progress')
   })
 })
 

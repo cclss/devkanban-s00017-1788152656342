@@ -1,24 +1,24 @@
 /**
  * Shared, React-free display vocabulary for the report surface.
  *
- * The check-status / grade Korean labels, the check-status → badge-modifier
+ * The check-status / grade English labels, the check-status → badge-modifier
  * map, and the fail-first check ordering all live here so both the rendered
  * {@link ../components/ReportView} and the pure markdown exporter
  * ({@link ./report-markdown}) agree on one source of copy and ordering — and so
  * the exporter stays importable in the fast `node` test environment without
  * pulling React in.
  *
- * All strings here are confirmed Korean domain content (mirroring the report
+ * All strings here are confirmed English domain content (mirroring the report
  * domain labels in `core/report.ts`), not design tokens.
  */
 import type { CheckStatus, Grade } from '../core/report'
 
-/** Korean, user-facing label for each check result. */
+/** English, user-facing label for each check result. */
 export const CHECK_STATUS_LABELS: Readonly<Record<CheckStatus, string>> = {
-  pass: '통과',
-  warn: '경고',
-  fail: '실패',
-  skip: '해당없음',
+  pass: 'Pass',
+  warn: 'Warning',
+  fail: 'Fail',
+  skip: 'N/A',
 } as const
 
 /**
@@ -32,13 +32,13 @@ export const CHECK_STATUS_BADGE: Readonly<Record<CheckStatus, string>> = {
   skip: 'na',
 } as const
 
-/** Korean, user-facing label for each overall grade tier. */
+/** English, user-facing label for each overall grade tier. */
 export const GRADE_LABELS: Readonly<Record<Grade, string>> = {
-  excellent: '우수',
-  good: '양호',
-  fair: '보통',
-  poor: '미흡',
-  pending: '등급 보류',
+  excellent: 'Excellent',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Poor',
+  pending: 'Grade withheld',
 } as const
 
 /**

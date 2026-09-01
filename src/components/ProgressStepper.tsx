@@ -8,20 +8,20 @@
  * pending, currently `is-active`, already `is-done`, or failed (`is-error`), so it
  * can never drift out of sync with the URL form and the report.
  *
- * Rules encoded here (Design §상태 전이 규칙):
+ * Rules encoded here (Design §state-transition rules):
  * - Happy path `idle → load → audit → ai → done`: the step matching the current
  *   in-progress stage is `is-active`; every earlier step is `is-done`. When the
  *   run reaches `done` all four steps are `is-done`.
  * - Partial result (`done-partial`): the load and audit steps completed, the AI
  *   step failed (`is-error`), yet the report still completed, so the final
- *   "리포트 완료" step is `is-done` — the partial 60-point report exists.
+ *   "Report done" step is `is-done` — the partial 60-point report exists.
  * - Load failure (`error-load`): the page-load step transitions to a failure
  *   indication (`is-error`); the later steps never start (stay pending), because
  *   no report is produced.
  *
  * Boundary: presentational component. It imports only the `Stage` type from the
  * state layer, holds no flow state, and touches no DOM globals. All copy is
- * co-located Korean domain content (mirroring the URL-form / report labels), not
+ * co-located English domain content (mirroring the URL-form / report labels), not
  * design tokens.
  */
 import type { Stage } from '../state/stage'
@@ -32,7 +32,7 @@ export type StepStatus = 'pending' | 'active' | 'done' | 'error'
 /** Stable identity of each progress step, in walk order. */
 export type ProgressStepId = 'load' | 'audit' | 'ai' | 'done'
 
-/** Korean, user-facing label for a progress step. */
+/** English, user-facing label for a progress step. */
 export interface ProgressStep {
   id: ProgressStepId
   label: string
@@ -44,14 +44,14 @@ export interface ProgressStep {
  * the single source of the copy.
  */
 export const PROGRESS_STEPS: readonly ProgressStep[] = [
-  { id: 'load', label: '페이지 로드' },
-  { id: 'audit', label: '자동 점검' },
-  { id: 'ai', label: 'AI 평가' },
-  { id: 'done', label: '리포트 완료' },
+  { id: 'load', label: 'Page load' },
+  { id: 'audit', label: 'Auto audit' },
+  { id: 'ai', label: 'AI evaluation' },
+  { id: 'done', label: 'Report done' },
 ] as const
 
 /** Accessible label for the stepper region. */
-export const PROGRESS_STEPPER_LABEL = '진단 진행 단계'
+export const PROGRESS_STEPPER_LABEL = 'Analysis progress steps'
 
 /**
  * Per-stage map of every step's visual status. Kept explicit (one row per

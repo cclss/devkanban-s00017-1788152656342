@@ -16,8 +16,8 @@
  *   report still completes as `done-partial` on the 60-point auto-audit scale
  *   only, with the grade held (`pending`) rather than re-cut onto 100.
  *
- * A `load` failure produces no report at all: {@link LoadErrorReport} carries a
- * Korean message (and an optional status code) instead of any scores.
+ * A `load` failure produces no report at all: {@link LoadErrorReport} carries an
+ * English message (and an optional status code) instead of any scores.
  */
 
 /**
@@ -39,7 +39,7 @@ export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
 
 /**
  * Overall quality grade. `excellent` / `good` / `fair` / `poor` are the 100-point
- * grade cuts; `pending` ("등급 보류") is used for `done-partial`, where the
+ * grade cuts; `pending` ("Grade withheld") is used for `done-partial`, where the
  * 100-point cuts are deliberately *not* applied to the 60-point-only score.
  * Values mirror the `--color-grade-*` tokens registered in the design spec.
  */
@@ -62,19 +62,19 @@ export type ViewportKind = 'desktop' | 'mobile'
 /**
  * One audit check within a category.
  *
- * `tip` is the Korean improvement hint shown for actionable results; it is
+ * `tip` is the English improvement hint shown for actionable results; it is
  * optional because a clean `pass` or an inapplicable `skip` has nothing to fix.
  */
 export interface CheckItem {
   /** Stable id within the check registry (e.g. `seo-title`). */
   id: string
-  /** Korean label of what was checked. */
+  /** English label of what was checked. */
   label: string
   /** Outcome of the check. */
   status: CheckStatus
-  /** Korean one-line explanation of the result. */
+  /** English one-line explanation of the result. */
   message: string
-  /** Korean improvement tip; present for `warn` / `fail`, usually absent otherwise. */
+  /** English improvement tip; present for `warn` / `fail`, usually absent otherwise. */
   tip?: string
 }
 
@@ -86,7 +86,7 @@ export interface CheckItem {
 export interface AuditCategory {
   /** Category discriminant. */
   id: AuditCategoryId
-  /** Korean display label (e.g. `성능`). */
+  /** English display label (e.g. `Performance`). */
   label: string
   /** Points earned in this category. */
   score: number
@@ -104,15 +104,15 @@ export interface AuditCategory {
 export interface LlmAxis {
   /** Axis discriminant. */
   id: LlmAxisId
-  /** Korean display label (e.g. `비주얼`). */
+  /** English display label (e.g. `Visual`). */
   label: string
   /** Points the AI awarded on this axis. */
   score: number
   /** Maximum points this axis can contribute. */
   maxScore: number
-  /** Korean overall comment for this axis. */
+  /** English overall comment for this axis. */
   comment: string
-  /** Korean, concrete improvement suggestions. */
+  /** English, concrete improvement suggestions. */
   suggestions: string[]
 }
 
@@ -160,9 +160,9 @@ export interface ReportScore {
  * auto-audit-only `done-partial` result.
  *
  * On `done-partial`, `llmAxes` is `null` and `partialReason` explains (in
- * Korean) why the AI evaluation was dropped, so the UI can replace the AI cards
+ * English) why the AI evaluation was dropped, so the UI can replace the AI cards
  * with a notice instead of scores. `partialDetail` carries the longer, actionable
- * Korean explanation of that reason, surfaced behind a "자세히 보기" disclosure so
+ * English explanation of that reason, surfaced behind a "View details" disclosure so
  * a user can see *why* the AI step failed and what to do about it.
  */
 export interface AnalysisReport {
@@ -180,32 +180,32 @@ export interface AnalysisReport {
   llmAxes: LlmAxis[] | null
   /** Desktop / mobile captures. */
   screenshots: Screenshot[]
-  /** Korean reason the AI step was dropped; present only on `done-partial`. */
+  /** English reason the AI step was dropped; present only on `done-partial`. */
   partialReason?: string
   /**
-   * Korean, actionable detail explaining the partial-result cause (what failed
-   * and how to fix it). Present only on `done-partial`; shown behind a "자세히
-   * 보기" disclosure so the terse `partialReason` stays scannable.
+   * English, actionable detail explaining the partial-result cause (what failed
+   * and how to fix it). Present only on `done-partial`; shown behind a "View
+   * details" disclosure so the terse `partialReason` stays scannable.
    */
   partialDetail?: string
 }
 
 /**
  * A `load`-stage failure. No scores are produced; the UI hides the whole report
- * and shows only this Korean message (with `statusCode` appended when present).
+ * and shows only this English message (with `statusCode` appended when present).
  */
 export interface LoadErrorReport {
   /** Discriminant. */
   outcome: 'error-load'
   /** The URL that failed to load. */
   url: string
-  /** Korean, user-facing error message. */
+  /** English, user-facing error message. */
   message: string
   /** HTTP-style status code when one is available. */
   statusCode?: number
   /**
-   * Korean, actionable detail explaining the load failure (what went wrong and
-   * how to fix it), surfaced behind a "자세히 보기" disclosure so the terse
+   * English, actionable detail explaining the load failure (what went wrong and
+   * how to fix it), surfaced behind a "View details" disclosure so the terse
    * `message` stays scannable. Absent on synthetic client-side failures that
    * carry only the shared message.
    */
@@ -228,22 +228,22 @@ export const AUDIT_CATEGORY_IDS: readonly AuditCategoryId[] = [
   'accessibility',
 ] as const
 
-/** Korean display labels for each auto-audit category. */
+/** English display labels for each auto-audit category. */
 export const AUDIT_CATEGORY_LABELS: Readonly<Record<AuditCategoryId, string>> = {
   seo: 'SEO',
-  performance: '성능',
-  mobile: '모바일',
-  security: '보안',
-  accessibility: '접근성',
+  performance: 'Performance',
+  mobile: 'Mobile',
+  security: 'Security',
+  accessibility: 'Accessibility',
 } as const
 
 /** Canonical order of the AI-rubric axes, as shown in the report. */
 export const LLM_AXIS_IDS: readonly LlmAxisId[] = ['visual', 'copy', 'cta'] as const
 
-/** Korean display labels for each AI-rubric axis. */
+/** English display labels for each AI-rubric axis. */
 export const LLM_AXIS_LABELS: Readonly<Record<LlmAxisId, string>> = {
-  visual: '비주얼',
-  copy: '카피',
+  visual: 'Visual',
+  copy: 'Copy',
   cta: 'CTA',
 } as const
 

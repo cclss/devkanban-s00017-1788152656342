@@ -132,7 +132,7 @@ describe('InfoTooltip', () => {
   })
 
   describe('copy-agnostic entry path', () => {
-    const entry = { title: '진단할 URL', body: '진단할 랜딩페이지 주소를 입력합니다.' }
+    const entry = { title: 'URL to analyze', body: 'Enter the landing-page address to analyze.' }
 
     it('renders arbitrary copy from an entry prop, closed, with the title in its name', () => {
       render(<InfoTooltip entry={entry} />)
@@ -161,13 +161,13 @@ describe('InfoTooltip', () => {
     })
 
     it('accepts title/body passed inline instead of an entry object', () => {
-      render(<InfoTooltip title="스크린샷 탭" body="데스크톱·모바일 스크린샷을 전환합니다." />)
+      render(<InfoTooltip title="Screenshot tabs" body="Switch between desktop and mobile screenshots." />)
       const trigger = screen.getByRole('button')
-      expect(trigger.getAttribute('aria-label')).toContain('스크린샷 탭')
+      expect(trigger.getAttribute('aria-label')).toContain('Screenshot tabs')
 
       fireEvent.click(trigger)
       expect(screen.getByRole('tooltip')).toBeDefined()
-      expect(screen.getByText('데스크톱·모바일 스크린샷을 전환합니다.')).toBeDefined()
+      expect(screen.getByText('Switch between desktop and mobile screenshots.')).toBeDefined()
     })
   })
 })

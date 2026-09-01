@@ -20,6 +20,7 @@ import { REPORT_VIEW_STRINGS } from './components/ReportView'
 import { PROGRESS_STEPPER_LABEL } from './components/ProgressStepper'
 import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
 import { API_KEY_PANEL_STRINGS } from './components/testtools/ApiKeyPanel'
+import { TEST_TOOLS_PANEL_STRINGS } from './components/testtools/TestToolsPanel'
 
 afterEach(() => {
   cleanup()
@@ -35,11 +36,25 @@ function stageOf(): string | null {
   return document.body.getAttribute('data-stage')
 }
 
+/** Clicks a stage-simulator button by its stable `data-stage-target` attribute. */
+function clickForceStage(target: string): void {
+  const button = document.querySelector(`[data-stage-target="${target}"]`)
+  if (button === null) throw new Error(`No stage-force button for "${target}"`)
+  fireEvent.click(button)
+}
+
+/** Clicks a conflict-simulator button by its stable `data-conflict-mode` attribute. */
+function clickConflictMode(mode: string): void {
+  const button = document.querySelector(`[data-conflict-mode="${mode}"]`)
+  if (button === null) throw new Error(`No conflict-mode button for "${mode}"`)
+  fireEvent.click(button)
+}
+
 describe('App grader shell', () => {
   it('assembles the test-tools panel above the three blocks and starts idle', () => {
     render(<App />)
     // Test tools present.
-    expect(screen.getByText('테스트 도구')).toBeDefined()
+    expect(screen.getByText(TEST_TOOLS_PANEL_STRINGS.title)).toBeDefined()
     // The three blocks: URL start button, the stepper region, and no report yet.
     expect(screen.getByRole('button', { name: URL_FORM_STRINGS.start })).toBeDefined()
     expect(screen.getByRole('list', { name: PROGRESS_STEPPER_LABEL })).toBeDefined()
@@ -54,9 +69,9 @@ describe('App grader shell', () => {
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe('')
   })
 
-  it('forcing 완료(정상) drives data-stage to done and shows the report', () => {
+  it('forcing done drives data-stage to done and shows the report', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+    clickForceStage('done')
     expect(stageOf()).toBe('done')
     // Report gauge + download appear; the URL form flips to the reset control.
     expect(screen.getByText(REPORT_VIEW_STRINGS.totalHeading)).toBeDefined()
@@ -64,31 +79,31 @@ describe('App grader shell', () => {
     expect(screen.getByRole('button', { name: URL_FORM_STRINGS.reset })).toBeDefined()
   })
 
-  it('forcing 완료(부분결과) shows the 60-point partial note', () => {
+  it('forcing done-partial shows the 60-point partial note', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '완료(AI 실패·부분결과)' }))
+    clickForceStage('done-partial')
     expect(stageOf()).toBe('done-partial')
     expect(screen.getByText(REPORT_VIEW_STRINGS.partialScaleNote)).toBeDefined()
   })
 
-  it('forcing 에러(로드 실패) hides the report gauge and shows only the error card', () => {
+  it('forcing error-load hides the report gauge and shows only the error card', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '에러(로드 실패)' }))
+    clickForceStage('error-load')
     expect(stageOf()).toBe('error-load')
     expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
     expect(screen.getByRole('region', { name: REPORT_VIEW_STRINGS.errorLabel })).toBeDefined()
   })
 
-  it('resets back to idle from a terminal via 대기', () => {
+  it('resets back to idle from a terminal via the idle stage button', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+    clickForceStage('done')
     expect(stageOf()).toBe('done')
-    fireEvent.click(screen.getByRole('button', { name: '대기' }))
+    clickForceStage('idle')
     expect(stageOf()).toBe('idle')
     expect(screen.queryByText(REPORT_VIEW_STRINGS.totalHeading)).toBeNull()
   })
 
-  it('starts a real run from idle: 진단 시작 POSTs /api/analyze (url in body) and enters load', () => {
+  it('starts a real run from idle: start POSTs /api/analyze (url in body) and enters load', () => {
     // A never-resolving fetch holds the run in `load` so the assertion sees the
     // synchronous transition without a real network call or later state churn.
     const fetchMock = vi.fn(
@@ -138,7 +153,7 @@ describe('App grader shell', () => {
           categories: [],
           llmAxes: null,
           screenshots: [],
-          partialReason: 'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+          partialReason: 'No AI evaluation results: an API key error means only the auto-audit results are shown.',
         },
       },
     ]
@@ -181,7 +196,7 @@ describe('App grader shell', () => {
 
   it('conflict simulation blocks a start client-side with an inline error', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '이미 분석 진행 중' }))
+    clickConflictMode('in-progress')
     fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
       target: { value: 'https://example.com' },
     })

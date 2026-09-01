@@ -10,20 +10,20 @@
  * `Response`, no network — asserting the promised behaviour of the whole screen.
  *
  * - **SC-1 (M-1)** — enter a public URL with valid credentials, start the run, and
- *   watch the progress stepper advance `페이지 로드 → 자동 점검 → AI 평가 → 리포트
- *   완료` in order, never skipping or regressing, every step ending `is-done`. On
- *   completion the report shows the total gauge + a real grade badge, the five
- *   auto-audit category cards, the three AI-axis cards, the desktop/mobile
- *   screenshot tabs, the checklist (message + Korean tip), and the AI comments /
+ *   watch the progress stepper advance `Page load → Auto audit → AI evaluation →
+ *   Report done` in order, never skipping or regressing, every step ending
+ *   `is-done`. On completion the report shows the total gauge + a real grade badge,
+ *   the five auto-audit category cards, the three AI-axis cards, the desktop/mobile
+ *   screenshot tabs, the checklist (message + English tip), and the AI comments /
  *   suggestions — all within a finite time budget (the 1-minute basis), measured
- *   from "진단 시작" to the final grade under the injected transport boundary.
- * - **SC-2 (M-2)** — from the completed report, clicking "마크다운 리포트 다운로드"
+ *   from "Start diagnosis" to the final grade under the injected transport boundary.
+ * - **SC-2 (M-2)** — from the completed report, clicking "Download markdown report"
  *   hands the byte-download boundary a Blob and a `landing-report-<host>-<ts>.md`
  *   filename, and the file's markdown carries the total, grade, per-category
- *   scores, per-check status + Korean tip, and the AI comments / suggestions.
+ *   scores, per-check status + English tip, and the AI comments / suggestions.
  *
  * The streamed terminal report reuses the confirmed `done` fixture, so every
- * Korean string asserted here is the project's single confirmed source of that
+ * English string asserted here is the project's single confirmed source of that
  * copy (report labels, grade labels, category/axis labels, form/report strings)
  * — this suite introduces no new user-facing copy.
  */
@@ -72,7 +72,7 @@ const RUN_STAGE_ORDER = ['load', 'audit', 'ai', 'done'] as const
 
 const TEST_URL = 'https://landing.example.com'
 
-/** The grade cuts a normal (100-point) report may show — never "등급 보류". */
+/** The grade cuts a normal (100-point) report may show — never "Grade withheld". */
 const FULL_GRADE_LABELS = [
   GRADE_LABELS.excellent,
   GRADE_LABELS.good,
@@ -132,7 +132,7 @@ function stepStatusOf(stepId: string): string | null {
   return step?.getAttribute('data-status') ?? null
 }
 
-describe('SC-1 — 정상 진단: 1분 내 4단계 순차 진행과 최종 등급·리포트 표시 (M-1)', () => {
+describe('SC-1 — normal diagnosis: 4 stages advance in order within 1 minute, final grade & report shown (M-1)', () => {
   it('streams load→audit→ai→done in order (no skip/regress) and renders the full report within the time budget', async () => {
     // Given: valid Anthropic / claude-sonnet-5 credentials and a public URL.
     const controlled = makeControlledStream()
@@ -157,7 +157,7 @@ describe('SC-1 — 정상 진단: 1분 내 4단계 순차 진행과 최종 등�
 
     try {
       render(<App />)
-      // Enter valid credentials via the API-key test tool ("유효한 키" preset).
+      // Enter valid credentials via the API-key test tool (valid-key preset).
       fireEvent.click(
         screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }),
       )
@@ -166,7 +166,7 @@ describe('SC-1 — 정상 진단: 1분 내 4단계 순차 진행과 최종 등�
       )
 
       // When: enter a public URL and start the diagnosis — the time budget clock
-      // starts at the "진단 시작" click (M-1 basis: click → final grade).
+      // starts at the "Start diagnosis" click (M-1 basis: click → final grade).
       fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
         target: { value: TEST_URL },
       })
@@ -263,22 +263,22 @@ describe('SC-1 — 정상 진단: 1분 내 4단계 순차 진행과 최종 등�
         screen.getByRole('tab', { name: REPORT_VIEW_STRINGS.viewportLabels.mobile }),
       ).toBeDefined()
 
-      // ── Checklist: a check message and its Korean tip render ────────────────
+      // ── Checklist: a check message and its English tip render ───────────────
       expect(
-        screen.getByText('히어로 이미지가 2.4MB로 과도하게 큽니다.'),
+        screen.getByText('The hero image is excessively large at 2.4MB.'),
       ).toBeDefined()
-      expect(screen.getByText(/WebP로 변환하고 200KB 이하로 압축/)).toBeDefined()
-      // At least one tip line, prefixed with the "팁" label.
-      expect(screen.getAllByText(/^팁:/).length).toBeGreaterThan(0)
+      expect(screen.getByText(/Convert to WebP and compress under 200KB/)).toBeDefined()
+      // At least one tip line, prefixed with the "Tip" label.
+      expect(screen.getAllByText(/^Tip:/).length).toBeGreaterThan(0)
 
       // ── AI comments + suggestions render (done only) ───────────────────────
       expect(screen.getByText(REPORT_VIEW_STRINGS.aiCommentsHeading)).toBeDefined()
       expect(
-        screen.getByText('여백과 타이포그래피의 위계가 명확해 첫인상이 깔끔합니다.'),
+        screen.getByText('Whitespace and typographic hierarchy are clear, giving a clean first impression.'),
       ).toBeDefined()
-      expect(screen.getAllByText(/^제안:/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/^Suggestion:/).length).toBeGreaterThan(0)
 
-      // ── The start control has flipped to "새로 진단" ───────────────────────
+      // ── The start control has flipped to "Start fresh" ─────────────────────
       expect(screen.getByRole('button', { name: URL_FORM_STRINGS.reset })).toBeDefined()
       expect(
         screen.queryByRole('button', { name: URL_FORM_STRINGS.start }),
@@ -323,12 +323,12 @@ async function driveToCompletedReport(): Promise<void> {
   await screen.findByText(GRADE_LABELS[doneReport.score.grade])
 }
 
-describe('SC-2 — 완료 리포트를 마크다운으로 다운로드 (M-2)', () => {
+describe('SC-2 — download the completed report as markdown (M-2)', () => {
   it('downloads landing-report-<host>-<ts>.md with the score, grade, tips, and AI feedback', async () => {
     // Given: a completed report is on screen (SC-1 outcome).
     await driveToCompletedReport()
 
-    // When: click "마크다운 리포트 다운로드".
+    // When: click "Download markdown report".
     fireEvent.click(
       screen.getByRole('button', { name: REPORT_VIEW_STRINGS.download }),
     )
@@ -345,20 +345,20 @@ describe('SC-2 — 완료 리포트를 마크다운으로 다운로드 (M-2)', (
     expect(filename).toBe('landing-report-example.com-2026-08-31T090000.md')
 
     // And: the file's markdown carries the score, grade, per-category scores,
-    // per-check status + Korean tips, and AI comments / suggestions.
+    // per-check status + English tips, and AI comments / suggestions.
     const markdown = await readBlobText(blob)
-    expect(markdown).toContain('# 랜딩페이지 품질 리포트')
-    expect(markdown).toContain(`- 총점: ${doneReport.score.total} / ${TOTAL_MAX_SCORE}`)
-    expect(markdown).toContain(`- 등급: ${GRADE_LABELS[doneReport.score.grade]}`)
+    expect(markdown).toContain('# Landing Page Quality Report')
+    expect(markdown).toContain(`- Total score: ${doneReport.score.total} / ${TOTAL_MAX_SCORE}`)
+    expect(markdown).toContain(`- Grade: ${GRADE_LABELS[doneReport.score.grade]}`)
     // Per-category score line (e.g. "### SEO (11/12)").
     expect(markdown).toMatch(/### SEO \(\d+\/\d+\)/)
     // Per-check status label + the improvement tip.
-    expect(markdown).toContain('[실패] 이미지 최적화')
-    expect(markdown).toContain('팁: WebP로 변환하고 200KB 이하로 압축해 초기 로딩을 단축하세요.')
+    expect(markdown).toContain('[Fail] Image optimization')
+    expect(markdown).toContain('Tip: Convert to WebP and compress under 200KB to shorten initial load.')
     // AI axis comment + a concrete suggestion.
-    expect(markdown).toContain('여백과 타이포그래피의 위계가 명확해 첫인상이 깔끔합니다.')
-    expect(markdown).toContain('제안: 스크롤 하단에도 동일한 CTA를 한 번 더 배치하세요.')
+    expect(markdown).toContain('Whitespace and typographic hierarchy are clear, giving a clean first impression.')
+    expect(markdown).toContain('Suggestion: Place the same CTA once more at the bottom of the scroll.')
     // A full report carries no partial-result notice.
-    expect(markdown).not.toContain('부분 결과 안내')
+    expect(markdown).not.toContain('Partial result notice')
   })
 })

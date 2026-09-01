@@ -9,21 +9,22 @@
  *   the run terminates in `done-partial` (straight from `ai`, never through
  *   `done`). The report still renders — never blocked by an error card — on the
  *   **60-point auto-audit scale**: the gauge maxes at {@link AUDIT_MAX_SCORE},
- *   the "자동 점검 60점 만점 기준" note shows, the grade badge reads "등급 보류",
- *   the AI-axis cards are replaced by the Korean partial notice, and the five
- *   category cards + checklist render normally. The markdown download still works
- *   and carries the "60점 만점 기준" scale note plus the AI-drop reason. In SC-3b
- *   the entered key string is never surfaced in the report, any error copy, or
- *   the downloaded file (key no-leak, Story spec "UI 배선 및 에러 처리").
+ *   the "out of 60 (auto-audit only)" note shows, the grade badge reads "Grade
+ *   withheld", the AI-axis cards are replaced by the English partial notice, and
+ *   the five category cards + checklist render normally. The markdown download still
+ *   works and carries the "out of 60, auto-audit only" scale note plus the AI-drop
+ *   reason. In SC-3b the entered key string is never surfaced in the report, any
+ *   error copy, or the downloaded file (key no-leak, Story spec "UI wiring and
+ *   error handling").
  * - **SC-4 (no Measure id — ordered exception coverage).**
  *   - SC-4a: a non-http(s) URL shows the inline form error and sends *no* request
  *     (`fetch` is never called; the machine stays `idle`).
  *   - SC-4b: a private-IP / localhost URL is a valid http URL, so the request is
  *     sent, but the server blocks it and the run transitions to `error-load`:
- *     only the single Korean error card shows (no ReportView, no meter), and the
+ *     only the single English error card shows (no ReportView, no meter), and the
  *     flow never advances to `audit` / `ai`.
  *
- * Every Korean string asserted here is the project's single confirmed source of
+ * Every English string asserted here is the project's single confirmed source of
  * that copy — the partial reasons come from `server/analysis-copy`
  * (`partialReasonMessage`), the load-error message + the report/grade/form labels
  * from their confirmed modules and the confirmed report fixtures — so this suite
@@ -142,7 +143,7 @@ function partialReportWith(reason: string): AnalysisReport {
   return { ...donePartialReport, partialReason: reason }
 }
 
-describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과 표시 (M-3)', () => {
+describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partial result (M-3)', () => {
   /**
    * Drives {@link App} to a `done-partial` report over a controlled stream, one
    * stage event at a time, recording every `data-stage` transition. The initial
@@ -214,7 +215,7 @@ describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과
     expect(meter).toHaveProperty('ariaValueMax', String(AUDIT_MAX_SCORE))
     expect(screen.getByText(REPORT_VIEW_STRINGS.partialScaleNote)).toBeDefined()
 
-    // The grade badge is held: "등급 보류", not a 100-point grade cut.
+    // The grade badge is held: "Grade withheld", not a 100-point grade cut.
     expect(screen.getByText(GRADE_LABELS.pending)).toBeDefined()
     for (const full of [
       GRADE_LABELS.excellent,
@@ -225,7 +226,7 @@ describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과
       expect(screen.queryByText(full)).toBeNull()
     }
 
-    // AI-axis cards + comments are replaced by the Korean partial notice.
+    // AI-axis cards + comments are replaced by the English partial notice.
     expect(screen.getByText(partialReason)).toBeDefined()
     for (const axisLabel of Object.values(LLM_AXIS_LABELS)) {
       expect(screen.queryByText(axisLabel)).toBeNull()
@@ -237,12 +238,12 @@ describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과
       expect(within(region).getAllByText(label).length).toBeGreaterThan(0)
     }
     expect(
-      within(region).getByText('히어로 이미지가 2.4MB로 과도하게 큽니다.'),
+      within(region).getByText('The hero image is excessively large at 2.4MB.'),
     ).toBeDefined()
-    expect(within(region).getAllByText(/^팁:/).length).toBeGreaterThan(0)
+    expect(within(region).getAllByText(/^Tip:/).length).toBeGreaterThan(0)
   }
 
-  it('SC-3a — 키 미입력: ai→done-partial(부분결과)로 종료, 60점 리포트·AI 안내·다운로드', async () => {
+  it('SC-3a — no key: ai→done-partial, 60-point report, AI notice, download', async () => {
     const reason = partialReasonMessage('missing-key')
     // SC-3a: the API-key field is left empty (the panel seeds it to '' on mount).
     const { observed } = await driveToPartial(reason, () => {
@@ -273,14 +274,14 @@ describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과
     expect(downloadBlob).toHaveBeenCalledTimes(1)
     const [blob] = downloadBlob.mock.calls[0] as [Blob, string]
     const markdown = await readBlobText(blob)
-    expect(markdown).toContain('자동 점검 60점 만점 기준')
+    expect(markdown).toContain('out of 60, auto-audit only')
     expect(markdown).toContain(PARTIAL_REPORT_NOTICE)
     expect(markdown).toContain(reason)
   })
 
-  it('SC-3b — 무효 키(auth 실패): 동일 부분결과 + 입력 키 원문이 화면·에러·리포트·다운로드에 무노출', async () => {
+  it('SC-3b — invalid key (auth failure): same partial result + entered key never surfaced on screen/error/report/download', async () => {
     const reason = partialReasonMessage('invalid-key')
-    // SC-3b: an invalid key is entered via the "무효한 키" preset.
+    // SC-3b: an invalid key is entered via the invalid-key preset.
     const { observed } = await driveToPartial(reason, () => {
       fireEvent.click(
         screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetInvalid }),
@@ -325,8 +326,8 @@ describe('SC-3 — AI 평가 실패 시 자동 점검 60점 만점 부분 결과
   })
 })
 
-describe('SC-4 — 잘못된 입력에 대한 사전 검증 (SSRF / URL 형식)', () => {
-  it('SC-4a — 비 http/https 입력: 인라인 폼 오류 표시, 요청 미전송(fetch 미호출)·스테퍼 미시작', () => {
+describe('SC-4 — pre-validation of invalid input (SSRF / URL format)', () => {
+  it('SC-4a — non-http/https input: inline form error shown, no request sent (fetch not called), stepper not started', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -354,7 +355,7 @@ describe('SC-4 — 잘못된 입력에 대한 사전 검증 (SSRF / URL 형식)'
     ).toBeNull()
   })
 
-  it('SC-4b — 사설 IP/localhost: error-load로 전이, ReportView 대신 한국어 에러 카드만 표시', async () => {
+  it('SC-4b — private IP/localhost: transitions to error-load, shows only the English error card instead of ReportView', async () => {
     // The server detects the SSRF block during load and streams an error-load
     // result (private-address message). The request *is* sent — the URL is a
     // valid http URL — but no report is produced.
@@ -400,7 +401,7 @@ describe('SC-4 — 잘못된 입력에 대한 사전 검증 (SSRF / URL 형식)'
       expect(stepStatusOf('audit')).toBe('pending')
       expect(stepStatusOf('ai')).toBe('pending')
 
-      // Only the single Korean error card shows — no ReportView, no meter, no
+      // Only the single English error card shows — no ReportView, no meter, no
       // download button.
       const errorRegion = screen.getByRole('region', {
         name: REPORT_VIEW_STRINGS.errorLabel,

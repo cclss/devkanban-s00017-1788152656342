@@ -8,13 +8,13 @@
  * component only holds that one hook plus the conflict-simulation toggle and
  * wires the pieces together.
  *
- * Wiring rules (Design §상태 전이 규칙):
- * - "진단 시작" runs a real `/api/analyze` stream via {@link useAnalyze}: it POSTs
- *   the URL + the API-key credentials (read from the test-tools localStorage) and
- *   drives the stepper live off the NDJSON stage events, storing the terminal
- *   report. While the conflict simulator is set to "이미 분석 진행 중" the start is
- *   refused with a `conflict` result so the URL form shows the client-side block
- *   inline — no request is ever sent.
+ * Wiring rules (Design §state-transition rules):
+ * - "Start diagnosis" runs a real `/api/analyze` stream via {@link useAnalyze}: it
+ *   POSTs the URL + the API-key credentials (read from the test-tools localStorage)
+ *   and drives the stepper live off the NDJSON stage events, storing the terminal
+ *   report. While the conflict simulator is set to "analysis already in progress"
+ *   the start is refused with a `conflict` result so the URL form shows the
+ *   client-side block inline — no request is ever sent.
  * - The stage simulator drives the machine to any stage by walking the legal
  *   edges ({@link planStagePath}) one guarded transition at a time; it clears any
  *   stored real report first so the demo report shows through.
@@ -48,10 +48,11 @@ export default function App() {
     useAnalyze()
   const [conflictMode, setConflictMode] = useState<ConflictMode>('none')
 
-  // "진단 시작": run a real analysis for `url`, pulling the API-key credentials
-  // from the test-tools localStorage (the MVP's key entry surface). When the
-  // conflict simulator is armed, refuse with a conflict so the URL form surfaces
-  // the client-side "이미 분석 진행 중" block and no request is sent.
+  // "Start diagnosis": run a real analysis for `url`, pulling the API-key
+  // credentials from the test-tools localStorage (the MVP's key entry surface).
+  // When the conflict simulator is armed, refuse with a conflict so the URL form
+  // surfaces the client-side "analysis already in progress" block and no request
+  // is sent.
   const handleStart = useCallback(
     (url: string): StartResult => {
       if (conflictMode === 'in-progress') {

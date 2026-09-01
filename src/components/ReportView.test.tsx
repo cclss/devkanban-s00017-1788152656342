@@ -2,13 +2,13 @@
 /**
  * Behaviour tests for {@link ReportView} (grain-6).
  *
- * Covers the three terminal branches (Design §상태 전이 규칙) and the markdown
- * download trigger, driven only through the public `report` prop:
+ * Covers the three terminal branches (Design §state-transition rules) and the
+ * markdown download trigger, driven only through the public `report` prop:
  * - `done`: full report — total gauge, grade badge, category + AI score cards,
  *   screenshot tabs, checklist, AI comments, download button.
- * - `done-partial`: 60-point scale note + "등급 보류" grade, AI cards/comments
- *   replaced by the Korean partial-result notice; categories/checklist stay.
- * - `error-load`: the whole report is hidden, only the Korean error card shows.
+ * - `done-partial`: 60-point scale note + "Grade withheld" grade, AI cards/comments
+ *   replaced by the English partial-result notice; categories/checklist stay.
+ * - `error-load`: the whole report is hidden, only the English error card shows.
  * - Download: clicking the button hands `downloadBlob` a Blob and the
  *   `landing-report-…md` filename (SC-2).
  *
@@ -51,28 +51,28 @@ describe('ReportView — done (full report)', () => {
     const meter = screen.getByRole('meter')
     expect(meter).toHaveProperty('ariaValueNow', '84')
     expect(meter).toHaveProperty('ariaValueMax', '100')
-    expect(screen.getByText('양호')).toBeDefined()
+    expect(screen.getByText('Good')).toBeDefined()
   })
 
   it('renders all five category and three AI score cards, and AI comments', () => {
     render(<ReportView report={doneReport} />)
-    for (const label of ['SEO', '성능', '모바일', '보안', '접근성']) {
+    for (const label of ['SEO', 'Performance', 'Mobile', 'Security', 'Accessibility']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0)
     }
-    for (const axis of ['비주얼', '카피', 'CTA']) {
+    for (const axis of ['Visual', 'Copy', 'CTA']) {
       expect(screen.getAllByText(axis).length).toBeGreaterThan(0)
     }
     // AI comment text is present (done only).
     expect(
-      screen.getByText('여백과 타이포그래피의 위계가 명확해 첫인상이 깔끔합니다.'),
+      screen.getByText('Whitespace and typographic hierarchy are clear, giving a clean first impression.'),
     ).toBeDefined()
   })
 
   it('orders checks fail-first within a category group', () => {
     render(<ReportView report={doneReport} />)
     // The performance group has fail → warn → pass.
-    const failCheck = screen.getByText('이미지 최적화').closest('.report-check')
-    const passCheck = screen.getByText('텍스트 압축').closest('.report-check')
+    const failCheck = screen.getByText('Image optimization').closest('.report-check')
+    const passCheck = screen.getByText('Text compression').closest('.report-check')
     expect(failCheck).not.toBeNull()
     expect(passCheck).not.toBeNull()
     // Document order: the fail check appears before the pass check.
@@ -93,23 +93,23 @@ describe('ReportView — done (full report)', () => {
     expect(desktopTab).toHaveProperty('ariaSelected', 'false')
     expect(screen.getByRole('img')).toHaveProperty(
       'alt',
-      `${REPORT_VIEW_STRINGS.viewportLabels.mobile} 스크린샷`,
+      `${REPORT_VIEW_STRINGS.viewportLabels.mobile} screenshot`,
     )
   })
 })
 
 describe('ReportView — done-partial (60-point scale)', () => {
-  it('shows the 60-point max, the 등급 보류 badge, and the partial notice instead of AI', () => {
+  it('shows the 60-point max, the grade-withheld badge, and the partial notice instead of AI', () => {
     render(<ReportView report={donePartialReport} />)
     const meter = screen.getByRole('meter')
     expect(meter).toHaveProperty('ariaValueMax', '60')
     expect(screen.getByText(REPORT_VIEW_STRINGS.partialScaleNote)).toBeDefined()
-    expect(screen.getByText('등급 보류')).toBeDefined()
+    expect(screen.getByText('Grade withheld')).toBeDefined()
 
-    // AI score cards and comments are gone; the Korean reason is shown.
-    expect(screen.queryByText('비주얼')).toBeNull()
+    // AI score cards and comments are gone; the English reason is shown.
+    expect(screen.queryByText('Visual')).toBeNull()
     expect(
-      screen.getByText('AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.'),
+      screen.getByText('No AI evaluation results: an API key error means only the auto-audit results are shown.'),
     ).toBeDefined()
 
     // Categories/checklist are still present.
@@ -118,10 +118,10 @@ describe('ReportView — done-partial (60-point scale)', () => {
 })
 
 describe('ReportView — error-load', () => {
-  it('hides the report and shows only the Korean error card with status code', () => {
+  it('hides the report and shows only the English error card with status code', () => {
     render(<ReportView report={errorLoadReport} />)
     expect(screen.getByText(errorLoadReport.message)).toBeDefined()
-    expect(screen.getByText(/상태 코드: 400/)).toBeDefined()
+    expect(screen.getByText(/Status code: 400/)).toBeDefined()
 
     // None of the report surfaces render.
     expect(screen.queryByRole('meter')).toBeNull()
@@ -134,11 +134,11 @@ describe('ReportView — error-load', () => {
 
 describe('ReportView — failure detail disclosure', () => {
   const LOAD_DETAIL =
-    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.'
+    'Private-network, localhost, and link-local addresses are blocked for SSRF protection. Enter a publicly reachable URL.'
   const PARTIAL_DETAIL =
-    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.'
+    'The API key you entered was rejected by the provider. Check that the key value is correct and that you have permission to use the selected model, then run the diagnosis again.'
 
-  it('shows a "자세히 보기" disclosure with the load-failure detail', () => {
+  it('shows a "View details" disclosure with the load-failure detail', () => {
     render(<ReportView report={{ ...errorLoadReport, detail: LOAD_DETAIL }} />)
     // Headline message is still shown, and the detail is available in the DOM.
     expect(screen.getByText(errorLoadReport.message)).toBeDefined()

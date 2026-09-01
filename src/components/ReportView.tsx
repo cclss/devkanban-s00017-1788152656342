@@ -9,12 +9,12 @@
  *   screenshot tabs, the fail-first checklist grouped by category, the AI axis
  *   comments, and the markdown download button.
  * - `done-partial`: the AI step failed, so the report is on the 60-point
- *   auto-audit scale only. The gauge shows the 60-point max with a "60점 만점
- *   기준" note, the grade badge reads "등급 보류", and the AI score cards +
- *   comments are replaced by the Korean `partialReason` notice. Categories,
- *   checklist, screenshots and download stay.
+ *   auto-audit scale only. The gauge shows the 60-point max with an "out of 60
+ *   (auto-audit only)" note, the grade badge reads "Grade withheld", and the AI
+ *   score cards + comments are replaced by the English `partialReason` notice.
+ *   Categories, checklist, screenshots and download stay.
  * - `error-load`: the page never loaded, so no report exists. The whole report
- *   is hidden and only a single Korean error card (message + optional status
+ *   is hidden and only a single English error card (message + optional status
  *   code) is shown.
  *
  * When `report` is `null` (no terminal result yet — idle/in-progress) nothing is
@@ -23,7 +23,7 @@
  * Boundary: presentational component. It reads the report domain data and
  * renders it; it holds only local view state (the active screenshot tab) and
  * delegates the actual byte download to `core/download`. All copy is co-located
- * Korean domain content, not design tokens.
+ * English domain content, not design tokens.
  */
 import { useState } from 'react'
 import {
@@ -45,46 +45,46 @@ import InfoTooltip from './InfoTooltip'
 import { CONTROL_HELP } from './control-help'
 
 /**
- * Korean, user-facing copy for the report view. Co-located confirmed domain
+ * English, user-facing copy for the report view. Co-located confirmed domain
  * content (mirroring the report-domain labels), not design tokens. Exported so
  * tests assert against the single source of the copy.
  */
 export const REPORT_VIEW_STRINGS = {
   /** Accessible label for the whole report region. */
-  regionLabel: '진단 리포트',
+  regionLabel: 'Analysis report',
   /** Heading above the total score gauge. */
-  totalHeading: '총점',
+  totalHeading: 'Total score',
   /** Note shown next to the gauge on a partial (60-point) report. */
-  partialScaleNote: `자동 점검 ${AUDIT_MAX_SCORE}점 만점 기준`,
+  partialScaleNote: `Out of ${AUDIT_MAX_SCORE} (auto-audit only)`,
   /** Section heading for the auto-audit category score cards. */
-  categoryScoresHeading: '카테고리 점수',
+  categoryScoresHeading: 'Category scores',
   /** Section heading for the AI-rubric axis score cards. */
-  aiScoresHeading: 'AI 평가',
+  aiScoresHeading: 'AI evaluation',
   /** Section heading for the screenshot tabs. */
-  screenshotsHeading: '스크린샷',
+  screenshotsHeading: 'Screenshots',
   /** Section heading for the per-category checklist. */
-  checklistHeading: '체크리스트',
+  checklistHeading: 'Checklist',
   /** Section heading for the AI axis comments. */
-  aiCommentsHeading: 'AI 코멘트',
+  aiCommentsHeading: 'AI comments',
   /** Label prefix for a check's improvement tip. */
-  tipLabel: '팁',
+  tipLabel: 'Tip',
   /** Label prefix for an AI axis improvement suggestion. */
-  suggestionLabel: '제안',
+  suggestionLabel: 'Suggestion',
   /** Markdown download button. */
-  download: '마크다운 리포트 다운로드',
+  download: 'Download markdown report',
   /** Disclosure toggle revealing the detailed failure reason. */
-  detailToggle: '실패 사유 자세히 보기',
+  detailToggle: 'View failure details',
   /** Accessible label for the error card region. */
-  errorLabel: '진단 실패',
+  errorLabel: 'Analysis failed',
   /** Screenshot viewport tab labels. */
-  viewportLabels: { desktop: '데스크톱', mobile: '모바일' } as Record<ViewportKind, string>,
+  viewportLabels: { desktop: 'Desktop', mobile: 'Mobile' } as Record<ViewportKind, string>,
 } as const
 
 /** MIME type for the downloaded markdown file. */
 const MARKDOWN_MIME = 'text/markdown;charset=utf-8'
 
 /**
- * Expandable "자세히 보기" disclosure carrying the detailed failure reason. Kept
+ * Expandable "View details" disclosure carrying the detailed failure reason. Kept
  * collapsed by default so the terse headline message/notice stays scannable, and
  * renders nothing when there is no detail (e.g. a synthetic client-side error).
  */
@@ -100,7 +100,7 @@ function FailureDetail({ detail }: { detail: string | undefined }) {
   )
 }
 
-/** Renders the single Korean error card for an `error-load` result. */
+/** Renders the single English error card for an `error-load` result. */
 function LoadError({ report }: { report: LoadErrorReport }) {
   return (
     <section
@@ -110,7 +110,7 @@ function LoadError({ report }: { report: LoadErrorReport }) {
       <div className="grader-card grader-card--danger report-error">
         <p className="report-error__message">{report.message}</p>
         {report.statusCode !== undefined ? (
-          <p className="report-error__code">상태 코드: {report.statusCode}</p>
+          <p className="report-error__code">Status code: {report.statusCode}</p>
         ) : null}
         <FailureDetail detail={report.detail} />
       </div>
@@ -269,7 +269,7 @@ function AnalysisReportView({
                 src={activeShot.dataUrl}
                 width={activeShot.width}
                 height={activeShot.height}
-                alt={`${REPORT_VIEW_STRINGS.viewportLabels[activeShot.viewport]} 스크린샷`}
+                alt={`${REPORT_VIEW_STRINGS.viewportLabels[activeShot.viewport]} screenshot`}
               />
             </div>
           </div>

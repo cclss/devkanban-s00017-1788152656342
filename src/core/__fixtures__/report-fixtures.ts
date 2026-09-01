@@ -54,28 +54,28 @@ const sampleCategories: AuditCategory[] = [
     checks: [
       {
         id: 'seo-title',
-        label: '페이지 타이틀',
+        label: 'Page title',
         status: 'pass',
-        message: '고유한 타이틀 태그가 설정되어 있습니다.',
+        message: 'A unique title tag is set.',
       },
       {
         id: 'seo-meta-description',
-        label: '메타 설명',
+        label: 'Meta description',
         status: 'warn',
-        message: '메타 설명이 120자로 다소 짧습니다.',
-        tip: '검색 노출을 위해 150~160자 사이로 핵심 가치를 담아 작성하세요.',
+        message: 'The meta description is somewhat short at 120 characters.',
+        tip: 'Write 150–160 characters capturing the core value for better search visibility.',
       },
       {
         id: 'seo-og-image',
-        label: '오픈그래프 이미지',
+        label: 'Open Graph image',
         status: 'pass',
-        message: 'og:image가 올바르게 지정되어 있습니다.',
+        message: 'og:image is set correctly.',
       },
       {
         id: 'seo-canonical',
-        label: '캐노니컬 URL',
+        label: 'Canonical URL',
         status: 'skip',
-        message: '단일 페이지로 캐노니컬 판단 대상이 아닙니다.',
+        message: 'A single page, so a canonical URL is not applicable.',
       },
     ],
   },
@@ -87,23 +87,23 @@ const sampleCategories: AuditCategory[] = [
     checks: [
       {
         id: 'perf-image-size',
-        label: '이미지 최적화',
+        label: 'Image optimization',
         status: 'fail',
-        message: '히어로 이미지가 2.4MB로 과도하게 큽니다.',
-        tip: 'WebP로 변환하고 200KB 이하로 압축해 초기 로딩을 단축하세요.',
+        message: 'The hero image is excessively large at 2.4MB.',
+        tip: 'Convert to WebP and compress under 200KB to shorten initial load.',
       },
       {
         id: 'perf-render-blocking',
-        label: '렌더 차단 리소스',
+        label: 'Render-blocking resources',
         status: 'warn',
-        message: '헤드에 렌더를 차단하는 스크립트가 2개 있습니다.',
-        tip: 'async 또는 defer 속성을 추가해 초기 렌더를 앞당기세요.',
+        message: 'There are 2 render-blocking scripts in the head.',
+        tip: 'Add the async or defer attribute to speed up the initial render.',
       },
       {
         id: 'perf-compression',
-        label: '텍스트 압축',
+        label: 'Text compression',
         status: 'pass',
-        message: 'gzip 압축이 활성화되어 있습니다.',
+        message: 'gzip compression is enabled.',
       },
     ],
   },
@@ -115,15 +115,15 @@ const sampleCategories: AuditCategory[] = [
     checks: [
       {
         id: 'mobile-viewport',
-        label: '뷰포트 메타',
+        label: 'Viewport meta',
         status: 'pass',
-        message: '반응형 뷰포트 메타 태그가 설정되어 있습니다.',
+        message: 'A responsive viewport meta tag is set.',
       },
       {
         id: 'mobile-tap-target',
-        label: '터치 영역',
+        label: 'Tap targets',
         status: 'pass',
-        message: '주요 버튼의 터치 영역이 48px 이상입니다.',
+        message: 'The tap targets of primary buttons are at least 48px.',
       },
     ],
   },
@@ -137,21 +137,21 @@ const sampleCategories: AuditCategory[] = [
         id: 'sec-https',
         label: 'HTTPS',
         status: 'pass',
-        message: '페이지가 HTTPS로 제공됩니다.',
+        message: 'The page is served over HTTPS.',
       },
       {
         id: 'sec-csp',
-        label: '콘텐츠 보안 정책',
+        label: 'Content Security Policy',
         status: 'fail',
-        message: 'Content-Security-Policy 헤더가 없습니다.',
-        tip: 'XSS 위험을 줄이기 위해 최소한의 CSP 헤더를 설정하세요.',
+        message: 'The Content-Security-Policy header is missing.',
+        tip: 'Set a minimal CSP header to reduce XSS risk.',
       },
       {
         id: 'sec-mixed-content',
-        label: '혼합 콘텐츠',
+        label: 'Mixed content',
         status: 'warn',
-        message: 'HTTP로 로드되는 리소스가 1건 있습니다.',
-        tip: '모든 외부 리소스를 HTTPS 경로로 교체하세요.',
+        message: 'There is 1 resource loaded over HTTP.',
+        tip: 'Replace all external resources with HTTPS paths.',
       },
     ],
   },
@@ -163,22 +163,22 @@ const sampleCategories: AuditCategory[] = [
     checks: [
       {
         id: 'a11y-alt-text',
-        label: '이미지 대체 텍스트',
+        label: 'Image alt text',
         status: 'warn',
-        message: '대체 텍스트가 없는 이미지가 3개 있습니다.',
-        tip: '스크린리더 사용자를 위해 의미 있는 alt 텍스트를 추가하세요.',
+        message: 'There are 3 images without alt text.',
+        tip: 'Add meaningful alt text for screen-reader users.',
       },
       {
         id: 'a11y-contrast',
-        label: '색 대비',
+        label: 'Color contrast',
         status: 'pass',
-        message: '본문 텍스트의 색 대비가 WCAG AA를 만족합니다.',
+        message: 'The body text color contrast meets WCAG AA.',
       },
       {
         id: 'a11y-labels',
-        label: '폼 레이블',
+        label: 'Form labels',
         status: 'pass',
-        message: '모든 입력 필드에 레이블이 연결되어 있습니다.',
+        message: 'Every input field has an associated label.',
       },
     ],
   },
@@ -191,10 +191,10 @@ const sampleLlmAxes: LlmAxis[] = [
     label: LLM_AXIS_LABELS.visual,
     score: 15,
     maxScore: 16,
-    comment: '여백과 타이포그래피의 위계가 명확해 첫인상이 깔끔합니다.',
+    comment: 'Whitespace and typographic hierarchy are clear, giving a clean first impression.',
     suggestions: [
-      '히어로 영역의 대비를 조금 더 높여 시선을 집중시키세요.',
-      '섹션 간 여백을 통일해 리듬감을 강화하세요.',
+      'Raise the contrast in the hero area a little more to focus attention.',
+      'Unify the spacing between sections to strengthen the rhythm.',
     ],
   },
   {
@@ -202,10 +202,10 @@ const sampleLlmAxes: LlmAxis[] = [
     label: LLM_AXIS_LABELS.copy,
     score: 11,
     maxScore: 14,
-    comment: '핵심 가치는 전달되나 문구가 다소 추상적입니다.',
+    comment: 'The core value comes across, but the wording is somewhat abstract.',
     suggestions: [
-      '헤드라인에 구체적 수치나 결과를 넣어 신뢰를 높이세요.',
-      '기능 나열보다 사용자 이점 중심으로 문장을 다듬으세요.',
+      'Add concrete numbers or results to the headline to build trust.',
+      'Refine the copy around user benefits rather than listing features.',
     ],
   },
   {
@@ -213,10 +213,10 @@ const sampleLlmAxes: LlmAxis[] = [
     label: LLM_AXIS_LABELS.cta,
     score: 8,
     maxScore: 10,
-    comment: '주요 CTA가 명확하나 하단 반복 노출이 부족합니다.',
+    comment: 'The primary CTA is clear, but it is not repeated enough toward the bottom.',
     suggestions: [
-      '스크롤 하단에도 동일한 CTA를 한 번 더 배치하세요.',
-      '버튼 문구를 행동 지향적으로("무료로 시작하기") 바꾸세요.',
+      'Place the same CTA once more at the bottom of the scroll.',
+      'Change the button copy to be action-oriented (e.g. "Start for free").',
     ],
   },
 ]
@@ -243,7 +243,7 @@ export const doneReport: AnalysisReport = {
 /**
  * `done-partial` — the AI step failed, so the report completes on the 60-point
  * auto-audit scale only: `llmAxes` is `null`, `llmScore` is `null`, the grade is
- * held (`pending`), and `partialReason` explains why in Korean.
+ * held (`pending`), and `partialReason` explains why in English.
  */
 export const donePartialReport: AnalysisReport = {
   outcome: 'done-partial',
@@ -261,16 +261,16 @@ export const donePartialReport: AnalysisReport = {
   categories: sampleCategories,
   llmAxes: null,
   screenshots: [desktopShot, mobileShot],
-  partialReason: 'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+  partialReason: 'No AI evaluation results: an API key error means only the auto-audit results are shown.',
 }
 
 /**
  * `error-load` — the page never loaded (here: SSRF block), so no report is
- * produced; only the Korean message (and status code) is shown.
+ * produced; only the English message (and status code) is shown.
  */
 export const errorLoadReport: LoadErrorReport = {
   outcome: 'error-load',
   url: 'http://127.0.0.1:3000',
-  message: '페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.',
+  message: 'Failed to load the page: private network addresses are blocked.',
   statusCode: 400,
 }

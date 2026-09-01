@@ -1,7 +1,7 @@
 /**
  * First block of the grader's 3-block layout: the URL entry form.
  *
- * The form owns the "진단 시작" (start diagnosis) / "새로 진단" (fresh restart)
+ * The form owns the "Start diagnosis" / "Start fresh" (restart)
  * control and the inline field-error surface. It is a controlled, stage-aware
  * view: it reads the single `Stage` value to decide which control to show and
  * whether the start button is enabled, and it delegates the actual state
@@ -10,7 +10,7 @@
  * the one `useStage` source of truth — so it can never drift out of sync with
  * the stepper and report.
  *
- * Rules encoded here (Design §상태 전이 규칙):
+ * Rules encoded here (Design §state-transition rules):
  * - Format check: only `http://` / `https://` URLs may start a run. A malformed
  *   value shows an inline `field-error` and never calls `onStart`, so no request
  *   is ever sent (SSRF / private-network judgement is the server's job and is out
@@ -18,10 +18,10 @@
  * - Start is offered only from `idle`; while a run is in progress the button is
  *   disabled. If the authoritative start machine still reports a **conflict**
  *   (a run already in progress), that is surfaced as an inline `field-error`
- *   ("이미 분석이 진행 중입니다…") and, again, no request is sent — the client
- *   blocks it, not the server.
+ *   ("An analysis is already in progress…") and, again, no request is sent — the
+ *   client blocks it, not the server.
  * - In any terminal stage (`done` / `done-partial` / `error-load`) the start
- *   button is replaced by a "새로 진단" reset button wired to `onReset`.
+ *   button is replaced by a "Start fresh" reset button wired to `onReset`.
  * - Saved addresses: a URL that actually starts a run (format-valid, not blocked
  *   by a conflict) is recorded to a browser-local history of up to five recent
  *   site addresses (see {@link module:components/url-history}). The history shows
@@ -31,7 +31,7 @@
  *
  * Boundary: presentational component. It imports the `Stage` type and the
  * `StartResult` shape from the state layer but holds no flow state and touches
- * no DOM globals; all copy is co-located domain content (Korean, like the report
+ * no DOM globals; all copy is co-located domain content (English, like the report
  * labels), not design tokens.
  */
 import { useId, useState } from 'react'
@@ -47,25 +47,25 @@ import InfoTooltip from './InfoTooltip'
 import { CONTROL_HELP } from './control-help'
 
 /**
- * Korean, user-facing copy for the URL form. Co-located as confirmed domain
+ * English, user-facing copy for the URL form. Co-located as confirmed domain
  * content (mirroring the report-domain labels) rather than design tokens.
  * Exported so tests assert against the single source of the copy.
  */
 export const URL_FORM_STRINGS = {
   /** Accessible label for the URL input. */
-  urlLabel: '진단할 URL',
+  urlLabel: 'URL to analyze',
   /** Placeholder example shown in the empty input. */
   urlPlaceholder: 'https://example.com',
   /** Start-diagnosis submit button (offered only from idle). */
-  start: '진단 시작',
+  start: 'Start diagnosis',
   /** Reset button shown in terminal stages ("start fresh"). */
-  reset: '새로 진단',
+  reset: 'Start fresh',
   /** Inline error when the input is not an http/https URL. */
-  formatError: 'http:// 또는 https:// 로 시작하는 URL을 입력하세요.',
+  formatError: 'Enter a URL that starts with http:// or https://.',
   /** Inline error when a run is already in progress (client-side conflict block). */
-  conflictError: '이미 분석이 진행 중입니다. 완료 후 다시 시도하세요.',
+  conflictError: 'An analysis is already in progress. Try again after it finishes.',
   /** Section label above the saved-address chips (recent URLs, up to 5). */
-  savedLabel: '저장된 주소',
+  savedLabel: 'Saved addresses',
 } as const
 
 /**
@@ -93,7 +93,7 @@ export interface UrlFormProps {
    * error and otherwise leaves the transition to the caller.
    */
   onStart: (url: string) => StartResult
-  /** Requests "새로 진단": resets a terminal stage back to idle. */
+  /** Requests "Start fresh": resets a terminal stage back to idle. */
   onReset: () => void
 }
 
@@ -149,7 +149,7 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
   }
 
   // Fill the input from a saved address so it can be re-run; clears any stale
-  // error but does not start the run (the user still presses "진단 시작").
+  // error but does not start the run (the user still presses "Start diagnosis").
   const handleSelectSaved = (value: string) => {
     setUrl(value)
     if (error) setError(null)

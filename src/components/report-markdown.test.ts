@@ -37,40 +37,40 @@ describe('buildReportMarkdown — done (full report)', () => {
   const md = buildReportMarkdown(doneReport)
 
   it('includes the total on the 100-point scale and the grade label', () => {
-    expect(md).toContain('- 총점: 84 / 100')
-    expect(md).toContain('- 등급: 양호')
+    expect(md).toContain('- Total score: 84 / 100')
+    expect(md).toContain('- Grade: Good')
   })
 
   it('includes the audit and AI score breakdown', () => {
-    expect(md).toContain('- 자동 점검: 50/60')
-    expect(md).toContain('- AI 루브릭: 34/40')
+    expect(md).toContain('- Auto-audit: 50/60')
+    expect(md).toContain('- AI rubric: 34/40')
   })
 
   it('includes every category with its score and each check + tip', () => {
     expect(md).toContain('### SEO (11/12)')
-    // A failing check's message and its Korean tip are both present.
-    expect(md).toContain('[실패] 이미지 최적화 — 히어로 이미지가 2.4MB로 과도하게 큽니다.')
-    expect(md).toContain('  - 팁: WebP로 변환하고 200KB 이하로 압축해 초기 로딩을 단축하세요.')
+    // A failing check's message and its English tip are both present.
+    expect(md).toContain('[Fail] Image optimization — The hero image is excessively large at 2.4MB.')
+    expect(md).toContain('  - Tip: Convert to WebP and compress under 200KB to shorten initial load.')
   })
 
   it('orders checks fail-first within a category', () => {
-    const perfHeading = md.indexOf('### 성능')
-    const failIdx = md.indexOf('[실패] 이미지 최적화', perfHeading)
-    const warnIdx = md.indexOf('[경고] 렌더 차단 리소스', perfHeading)
-    const passIdx = md.indexOf('[통과] 텍스트 압축', perfHeading)
+    const perfHeading = md.indexOf('### Performance')
+    const failIdx = md.indexOf('[Fail] Image optimization', perfHeading)
+    const warnIdx = md.indexOf('[Warning] Render-blocking resources', perfHeading)
+    const passIdx = md.indexOf('[Pass] Text compression', perfHeading)
     expect(failIdx).toBeGreaterThan(-1)
     expect(failIdx).toBeLessThan(warnIdx)
     expect(warnIdx).toBeLessThan(passIdx)
   })
 
   it('includes the AI axes with comments and suggestions', () => {
-    expect(md).toContain('### 비주얼 (15/16)')
-    expect(md).toContain('- 제안: 히어로 영역의 대비를 조금 더 높여 시선을 집중시키세요.')
+    expect(md).toContain('### Visual (15/16)')
+    expect(md).toContain('- Suggestion: Raise the contrast in the hero area a little more to focus attention.')
   })
 
   it('does not render the partial-result guidance notice', () => {
     expect(md).not.toContain(PARTIAL_REPORT_NOTICE)
-    expect(md).not.toContain('부분 결과 안내')
+    expect(md).not.toContain('Partial result notice')
   })
 })
 
@@ -78,47 +78,47 @@ describe('buildReportMarkdown — done-partial (60-point scale)', () => {
   const md = buildReportMarkdown(donePartialReport)
 
   it('states the 60-point scale on the total and holds the grade', () => {
-    expect(md).toContain('- 총점: 50 / 60 (자동 점검 60점 만점 기준)')
-    expect(md).toContain('- 등급: 등급 보류')
+    expect(md).toContain('- Total score: 50 / 60 (out of 60, auto-audit only)')
+    expect(md).toContain('- Grade: Grade withheld')
   })
 
   it('renders an explicit standalone partial-result guidance notice near the top', () => {
     // The dedicated notice block is present, above the score summary section.
-    expect(md).toContain('> **부분 결과 안내**')
+    expect(md).toContain('> **Partial result notice**')
     expect(md).toContain(`> ${PARTIAL_REPORT_NOTICE}`)
-    expect(md.indexOf('부분 결과 안내')).toBeLessThan(md.indexOf('## 점수 요약'))
+    expect(md.indexOf('Partial result notice')).toBeLessThan(md.indexOf('## Score summary'))
     // It reuses the same partialReason the screen shows.
-    expect(md).toContain('> AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.')
+    expect(md).toContain('> No AI evaluation results: an API key error means only the auto-audit results are shown.')
   })
 
   it('marks the AI rubric unavailable and prints the drop reason instead of axes', () => {
-    expect(md).toContain('- AI 루브릭: 평가 불가')
+    expect(md).toContain('- AI rubric: unavailable')
     expect(md).toContain(
-      'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+      'No AI evaluation results: an API key error means only the auto-audit results are shown.',
     )
-    expect(md).not.toContain('### 비주얼')
+    expect(md).not.toContain('### Visual')
   })
 
   it('still includes the auto-audit categories and checks', () => {
     expect(md).toContain('### SEO (11/12)')
-    expect(md).toContain('[통과] 페이지 타이틀')
+    expect(md).toContain('[Pass] Page title')
   })
 })
 
 describe('buildReportMarkdown — partial-result detail', () => {
   const DETAIL =
-    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.'
+    'The API key you entered was rejected by the provider. Check that the key value is correct and that you have permission to use the selected model, then run the diagnosis again.'
   const md = buildReportMarkdown({ ...donePartialReport, partialDetail: DETAIL })
 
   it('carries the detailed failure reason in the guidance block and score summary', () => {
     // In the top guidance blockquote…
     expect(md).toContain(`> ${DETAIL}`)
     // …and as an explicit summary line.
-    expect(md).toContain(`- 부분 결과 상세: ${DETAIL}`)
+    expect(md).toContain(`- Partial result detail: ${DETAIL}`)
   })
 
   it('omits the detail line entirely when no partialDetail is present', () => {
     const plain = buildReportMarkdown(donePartialReport)
-    expect(plain).not.toContain('부분 결과 상세')
+    expect(plain).not.toContain('Partial result detail')
   })
 })
