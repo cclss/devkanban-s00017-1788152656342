@@ -69,7 +69,7 @@ describe('ApiKeyPanel', () => {
     )
   })
 
-  it('applies the 키 없음 / 유효한 키 / 무효한 키 presets to the key + storage', () => {
+  it('applies the no-key / valid-key / invalid-key presets to the key + storage', () => {
     render(<ApiKeyPanel />)
     const keyInput = screen.getByLabelText(
       API_KEY_PANEL_STRINGS.keyLabel,

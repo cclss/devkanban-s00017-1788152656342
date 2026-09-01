@@ -8,16 +8,16 @@
  * carries the report to store. It holds no React and no UI state, so it is unit
  * testable with a hand-built streaming `Response` and an injected `fetch`.
  *
- * Security invariant (Story spec "UI 배선 및 에러 처리"): the API key travels in
+ * Security invariant (Story spec "UI wiring and error handling"): the API key travels in
  * the request **body**, never in the URL or a log — the endpoint path is a fixed
  * constant with no query string, and this module never logs the params.
  *
- * Failure handling (Design §상태 전이 규칙): a `load`-stage failure the server
+ * Failure handling (Design §State transition rules): a `load`-stage failure the server
  * detects (timeout / SSRF block / bad URL) arrives as a normal terminal
  * `error-load` `result` event and flows through `onResult` like any other. A
  * *transport* failure — the request never reaching the server, a non-OK
  * response, or a truncated stream — cannot produce a server report, so this
- * module synthesises the equivalent Korean `error-load` report itself
+ * module synthesises the equivalent `error-load` report itself
  * ({@link transportErrorReport}) and hands it to `onResult`, so the UI still
  * lands in `error-load` with a message instead of hanging in `load`.
  *
@@ -33,13 +33,13 @@ import type { Stage } from './stage'
 export const ANALYZE_ENDPOINT = '/api/analyze'
 
 /**
- * Korean transport-failure message, used when the request never yields a server
+ * Transport-failure message, used when the request never yields a server
  * report (network error / non-OK response / truncated stream). Mirrors the
  * pipeline's confirmed `network` load-error copy so the card reads identically
  * whether the failure was detected server- or client-side.
  */
 export const TRANSPORT_ERROR_MESSAGE =
-  '페이지를 불러오지 못했습니다: 페이지에 연결할 수 없습니다.'
+  'Failed to load the page: Could not connect to the page.'
 
 /** Credentials + target for one analysis run. */
 export interface AnalyzeParams {

@@ -4,7 +4,7 @@
  * Sibling to the API-key storage adapter (`testtools/api-key-storage.ts`): the
  * grader keeps the recently-diagnosed site addresses in the browser only — never
  * on a server — so a returning user can pick a previous URL instead of retyping
- * it (Design §로컬 스토리지 키 관리, extended to the URL form). Unlike the three
+ * it (Design §Local storage key management, extended to the URL form). Unlike the three
  * scalar key entries, the history is a *list*, so it owns one dedicated key
  * holding a JSON string array and is capped at {@link MAX_SAVED_URLS} entries.
  *
@@ -20,7 +20,7 @@
 /** The single localStorage key holding the saved-URL history (a JSON array). */
 export const URL_HISTORY_STORAGE_KEY = 'landing_grader_url_history'
 
-/** How many site addresses may be kept at once ("최대 5개"). */
+/** How many site addresses may be kept at once ("at most 5"). */
 export const MAX_SAVED_URLS = 5
 
 /**

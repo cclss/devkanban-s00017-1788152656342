@@ -39,13 +39,13 @@ export interface UseAnalyze {
    */
   report: ReportResult | null
   /**
-   * Requests "진단 시작" for `params`. Guards through the stage machine: refuses
+   * Requests "start diagnosis" for `params`. Guards through the stage machine: refuses
    * with `conflict: true` while a run is in progress (no request is sent);
    * otherwise clears any prior report, transitions to `load`, and streams the
    * analysis, driving `transitionTo` per stage event and storing the result.
    */
   start: (params: AnalyzeParams) => StartResult
-  /** Requests "새로 진단": resets a terminal stage to `idle` and drops the report. */
+  /** Requests "new diagnosis": resets a terminal stage to `idle` and drops the report. */
   reset: () => void
   /**
    * Drives the machine directly to `to` when the edge is legal (used by the

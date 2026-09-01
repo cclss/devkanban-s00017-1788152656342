@@ -1,6 +1,6 @@
 /**
- * The test-tools panel that sits above the three grader blocks (Design §테스트
- * 도구 패널). It is a collapsible `<details>` region — mockup scaffolding, not a
+ * The test-tools panel that sits above the three grader blocks (Design
+ * §Test-tools panel). It is a collapsible `<details>` region — mockup scaffolding, not a
  * real product surface — that gathers the API-key tool and the stage/conflict
  * simulator in one place so a tester can wire and shake the UI by hand.
  *
@@ -13,10 +13,10 @@ import ApiKeyPanel from './ApiKeyPanel'
 import StageSimulator, { type ConflictMode } from './StageSimulator'
 import type { Stage } from '../../state/stage'
 
-/** Korean, user-facing copy for the panel shell. Exported for tests. */
+/** User-facing copy for the panel shell. Exported for tests. */
 export const TEST_TOOLS_PANEL_STRINGS = {
-  title: '테스트 도구',
-  note: '실제 제품 화면에는 없는, 이 화면을 검증하기 위한 도구입니다.',
+  title: 'Test tools',
+  note: 'A tool for verifying this screen; it does not exist on the real product screen.',
 } as const
 
 export interface TestToolsPanelProps {

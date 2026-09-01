@@ -62,16 +62,16 @@ const demoCategories: AuditCategory[] = [
     checks: [
       {
         id: 'seo-title',
-        label: '페이지 타이틀',
+        label: 'Page title',
         status: 'pass',
-        message: '고유한 타이틀 태그가 설정되어 있습니다.',
+        message: 'A unique title tag is set.',
       },
       {
         id: 'seo-meta-description',
-        label: '메타 설명',
+        label: 'Meta description',
         status: 'warn',
-        message: '메타 설명이 다소 짧습니다.',
-        tip: '핵심 가치를 담아 150~160자로 작성하세요.',
+        message: 'The meta description is a little short.',
+        tip: 'Write 150–160 characters that convey the core value.',
       },
     ],
   },
@@ -83,10 +83,10 @@ const demoCategories: AuditCategory[] = [
     checks: [
       {
         id: 'perf-image-size',
-        label: '이미지 최적화',
+        label: 'Image optimization',
         status: 'fail',
-        message: '히어로 이미지가 과도하게 큽니다.',
-        tip: 'WebP로 변환해 200KB 이하로 압축하세요.',
+        message: 'The hero image is excessively large.',
+        tip: 'Convert it to WebP and compress it under 200KB.',
       },
     ],
   },
@@ -98,9 +98,9 @@ const demoCategories: AuditCategory[] = [
     checks: [
       {
         id: 'mobile-viewport',
-        label: '뷰포트 메타',
+        label: 'Viewport meta',
         status: 'pass',
-        message: '반응형 뷰포트 메타 태그가 설정되어 있습니다.',
+        message: 'A responsive viewport meta tag is set.',
       },
     ],
   },
@@ -114,13 +114,13 @@ const demoCategories: AuditCategory[] = [
         id: 'sec-https',
         label: 'HTTPS',
         status: 'pass',
-        message: '페이지가 HTTPS로 제공됩니다.',
+        message: 'The page is served over HTTPS.',
       },
       {
         id: 'sec-canonical',
-        label: '캐노니컬 URL',
+        label: 'Canonical URL',
         status: 'skip',
-        message: '단일 페이지로 판단 대상이 아닙니다.',
+        message: 'Not applicable for a single page.',
       },
     ],
   },
@@ -132,10 +132,10 @@ const demoCategories: AuditCategory[] = [
     checks: [
       {
         id: 'a11y-alt-text',
-        label: '이미지 대체 텍스트',
+        label: 'Image alt text',
         status: 'warn',
-        message: '대체 텍스트가 없는 이미지가 있습니다.',
-        tip: '의미 있는 alt 텍스트를 추가하세요.',
+        message: 'Some images have no alt text.',
+        tip: 'Add meaningful alt text.',
       },
     ],
   },
@@ -148,24 +148,24 @@ const demoLlmAxes: LlmAxis[] = [
     label: LLM_AXIS_LABELS.visual,
     score: 15,
     maxScore: 16,
-    comment: '여백과 타이포그래피의 위계가 명확합니다.',
-    suggestions: ['히어로 영역의 대비를 조금 더 높이세요.'],
+    comment: 'The whitespace and typographic hierarchy are clear.',
+    suggestions: ['Raise the contrast in the hero area a little more.'],
   },
   {
     id: 'copy',
     label: LLM_AXIS_LABELS.copy,
     score: 11,
     maxScore: 14,
-    comment: '핵심 가치는 전달되나 문구가 다소 추상적입니다.',
-    suggestions: ['헤드라인에 구체적 수치를 넣어 신뢰를 높이세요.'],
+    comment: 'The core value comes across, but the wording is a little abstract.',
+    suggestions: ['Add concrete numbers to the headline to build trust.'],
   },
   {
     id: 'cta',
     label: LLM_AXIS_LABELS.cta,
     score: 8,
     maxScore: 10,
-    comment: '주요 CTA는 명확하나 하단 반복 노출이 부족합니다.',
-    suggestions: ['스크롤 하단에도 동일한 CTA를 배치하세요.'],
+    comment: 'The primary CTA is clear, but it is not repeated enough toward the bottom.',
+    suggestions: ['Place the same CTA at the bottom of the scroll as well.'],
   },
 ]
 
@@ -191,7 +191,7 @@ export const demoDoneReport: AnalysisReport = {
 /**
  * `done-partial` — the AI step failed, so the report completes on the 60-point
  * auto-audit scale only: `llmAxes`/`llmScore` are `null`, the grade is held
- * (`pending`), and `partialReason` explains why in Korean.
+ * (`pending`), and `partialReason` explains why.
  */
 export const demoDonePartialReport: AnalysisReport = {
   outcome: 'done-partial',
@@ -209,18 +209,19 @@ export const demoDonePartialReport: AnalysisReport = {
   categories: demoCategories,
   llmAxes: null,
   screenshots: [desktopShot, mobileShot],
-  partialReason: 'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+  partialReason:
+    'AI evaluation unavailable: an API key error occurred, so only the automated audit results are shown.',
   partialDetail:
-    '입력한 API 키가 공급자에서 거부되었습니다. 키 값이 정확한지, 선택한 모델을 사용할 권한이 있는지 확인한 뒤 다시 진단하세요.',
+    'The API key you entered was rejected by the provider. Check that the key value is correct and that you have permission to use the selected model, then run the diagnosis again.',
 }
 
-/** `error-load` — the page never loaded, so only the Korean message is shown. */
+/** `error-load` — the page never loaded, so only the message is shown. */
 export const demoErrorLoadReport: LoadErrorReport = {
   outcome: 'error-load',
   url: 'http://127.0.0.1:3000',
-  message: '페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.',
+  message: 'Failed to load the page: Private network addresses are blocked.',
   detail:
-    '사설 네트워크·localhost·링크로컬 주소는 SSRF 보호를 위해 차단됩니다. 외부에서 접근 가능한 공개 URL을 입력하세요.',
+    'Private network, localhost, and link-local addresses are blocked to protect against SSRF. Enter a public URL that is reachable from outside.',
   statusCode: 400,
 }
 

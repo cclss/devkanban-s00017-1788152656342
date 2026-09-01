@@ -4,7 +4,7 @@
  *
  * Two concerns, verified through the public helpers only:
  * - `addUrlToHistory` (pure): newest-first ordering, de-duplication, blank
- *   no-op, and the {@link MAX_SAVED_URLS} cap that makes "최대 5개" true and drops
+ *   no-op, and the {@link MAX_SAVED_URLS} cap that makes "at most 5" true and drops
  *   the oldest entry once full.
  * - `readUrlHistory` / `writeUrlHistory`: a round-trip through `localStorage`,
  *   plus the guards that turn a missing / corrupt / oversized stored value into

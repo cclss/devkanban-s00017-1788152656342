@@ -97,7 +97,7 @@ export function transition(from: Stage, to: Stage): Stage {
   return canTransition(from, to) ? to : from
 }
 
-/** Outcome of a "진단 시작" (start diagnosis) request. */
+/** Outcome of a "start diagnosis" request. */
 export interface StartResult {
   /** Stage after the request (always `load` when started, else unchanged). */
   stage: Stage
@@ -111,7 +111,7 @@ export interface StartResult {
 }
 
 /**
- * Semantic "진단 시작" action, enforcing the two start rules:
+ * Semantic "start diagnosis" action, enforcing the two start rules:
  *
  * - Start is allowed from `idle` and from any terminal (a terminal restart
  *   discards the old run and begins a completely fresh state machine).
@@ -128,7 +128,7 @@ export function start(current: Stage): StartResult {
 }
 
 /**
- * Semantic "새로 진단" (reset) action. Returns `idle` from any terminal state
+ * Semantic "new diagnosis" (reset) action. Returns `idle` from any terminal state
  * and is a no-op everywhere else (you cannot reset a run that is still going).
  */
 export function reset(current: Stage): Stage {

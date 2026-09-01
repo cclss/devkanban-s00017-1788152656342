@@ -1,10 +1,10 @@
 /**
- * Test-tool: API key + provider/model entry (Design §테스트 도구 패널).
+ * Test-tool: API key + provider/model entry (Design §Test-tools panel).
  *
  * This is mockup scaffolding, not a real product surface: the real user's key
  * entry is stubbed here so the wiring can be exercised by hand. The panel lets a
  * tester pick a provider/model, type a masked key, and jump the key to one of the
- * three "permission" presets — 키 없음 / 유효한 키 / 무효한 키. Every change is
+ * three "permission" presets — no key / valid key / invalid key. Every change is
  * mirrored to the three owned localStorage keys on the spot (no save button), and
  * the three keys are read back on mount so a revisit is pre-filled.
  *
@@ -13,7 +13,7 @@
  * self-contained: it owns its own form state + persistence and needs no props.
  *
  * Boundary: presentational + local persistence via the storage adapter. It holds
- * only its own form state; all copy is co-located Korean domain content.
+ * only its own form state; all copy is co-located English domain content.
  */
 import { useEffect, useId, useState } from 'react'
 import {
@@ -31,7 +31,7 @@ export const API_KEY_PROVIDERS = [
 ] as const
 
 /**
- * Model options, each tagged with the provider it belongs to (Design/§가정: no
+ * Model options, each tagged with the provider it belongs to (Design/§Assumptions: no
  * date-suffixed ids). The model `<select>` shows only the models of the currently
  * selected provider, so a Claude model is never offered while OpenAI is picked and
  * vice versa.
@@ -75,26 +75,27 @@ export const API_KEY_PRESETS = {
   invalid: 'invalid-demo-key',
 } as const
 
-/** Korean, user-facing copy for the panel. Exported so tests assert one source. */
+/** User-facing copy for the panel. Exported so tests assert one source. */
 export const API_KEY_PANEL_STRINGS = {
-  heading: 'API 키 설정',
-  providerLabel: '공급자',
-  modelLabel: '모델',
-  keyLabel: 'API 키',
+  heading: 'API key settings',
+  providerLabel: 'Provider',
+  modelLabel: 'Model',
+  keyLabel: 'API key',
   keyPlaceholder: 'sk-...',
-  presetGroupLabel: '키 프리셋',
-  presetNone: '키 없음',
-  presetValid: '유효한 키',
-  presetInvalid: '무효한 키',
+  presetGroupLabel: 'Key presets',
+  presetNone: 'No key',
+  presetValid: 'Valid key',
+  presetInvalid: 'Invalid key',
   /** Button that reveals the masked key so a saved value can be confirmed. */
-  revealShow: '키 표시',
+  revealShow: 'Show key',
   /** Button that re-masks a revealed key. */
-  revealHide: '키 숨김',
+  revealHide: 'Hide key',
   /**
    * Reassures the user the key is persisted locally, so a masked (dotted) field
    * is not mistaken for a lost value after a failed run or a page reload.
    */
-  keyHint: '입력한 키는 이 브라우저에 자동 저장되어 다음에 다시 입력할 필요가 없습니다.',
+  keyHint:
+    'The key you enter is saved automatically in this browser, so you will not need to enter it again.',
 } as const
 
 const DEFAULT_PROVIDER = API_KEY_PROVIDERS[0].id

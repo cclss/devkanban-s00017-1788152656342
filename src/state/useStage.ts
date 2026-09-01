@@ -31,12 +31,12 @@ export interface UseStage {
   /** True in an end state (done / done-partial / error-load). */
   terminal: boolean
   /**
-   * Requests "진단 시작". Starts from `idle` or a terminal (fresh restart);
+   * Requests "start diagnosis". Starts from `idle` or a terminal (fresh restart);
    * refuses with `conflict: true` while a run is in progress. Returns the
    * outcome so the caller can surface the conflict as an inline field error.
    */
   start: () => StartResult
-  /** Requests "새로 진단": resets a terminal stage back to `idle`. */
+  /** Requests "new diagnosis": resets a terminal stage back to `idle`. */
   reset: () => void
   /**
    * Applies the transition to `to` when legal, returning whether it was

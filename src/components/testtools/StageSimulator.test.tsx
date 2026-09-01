@@ -47,9 +47,9 @@ describe('StageSimulator', () => {
         onConflictModeChange={() => {}}
       />,
     )
-    const auditBtn = screen.getByRole('button', { name: '감사' })
+    const auditBtn = screen.getByRole('button', { name: 'Audit' })
     expect(auditBtn.getAttribute('aria-pressed')).toBe('true')
-    const idleBtn = screen.getByRole('button', { name: '대기' })
+    const idleBtn = screen.getByRole('button', { name: 'Idle' })
     expect(idleBtn.getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -63,7 +63,7 @@ describe('StageSimulator', () => {
         onConflictModeChange={() => {}}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done (normal)' }))
     expect(onForceStage).toHaveBeenCalledWith('done')
   })
 
@@ -104,7 +104,7 @@ describe('StageSimulator', () => {
       fireEvent.click(helpTrigger(CONTROL_HELP.forceStage))
       expect(screen.getByText(CONTROL_HELP.forceStage.body)).toBeDefined()
 
-      fireEvent.click(screen.getByRole('button', { name: '완료(정상)' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Done (normal)' }))
       expect(onForceStage).toHaveBeenCalledWith('done')
     })
   })
