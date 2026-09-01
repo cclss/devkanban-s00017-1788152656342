@@ -6,7 +6,7 @@ import {
   RUBRIC_SYSTEM_PROMPT,
   type AnthropicMessageCreate,
 } from './claude-evaluator'
-import { LLM_MAX_SCORE, type Screenshot } from '../core/report'
+import { LLM_AXIS_LABELS, LLM_MAX_SCORE, type Screenshot } from '../core/report'
 
 /**
  * The real evaluator calls Claude behind an injected message-create function, so
@@ -40,9 +40,9 @@ function reply(text: string): Anthropic.Message {
 
 const VALID_JSON = JSON.stringify({
   axes: [
-    { id: 'visual', score: 16, comment: '레이아웃이 명확합니다.', suggestions: ['대비를 높이세요.'] },
-    { id: 'copy', score: 12, comment: '문구가 다소 추상적입니다.', suggestions: [] },
-    { id: 'cta', score: 9, comment: 'CTA가 명확합니다.', suggestions: ['하단에도 배치하세요.'] },
+    { id: 'visual', score: 16, comment: 'The layout is clear.', suggestions: ['Increase the contrast.'] },
+    { id: 'copy', score: 12, comment: 'The wording is somewhat abstract.', suggestions: [] },
+    { id: 'cta', score: 9, comment: 'The CTA is clear.', suggestions: ['Also place it at the bottom.'] },
   ],
 })
 
@@ -51,7 +51,7 @@ describe('parseRubricAxes', () => {
     const axes = parseRubricAxes(VALID_JSON)
     expect(axes?.map((a) => a.id)).toEqual(['visual', 'copy', 'cta'])
     expect(axes?.map((a) => a.maxScore)).toEqual([16, 14, 10])
-    expect(axes?.[0].label).toBe('비주얼')
+    expect(axes?.[0].label).toBe(LLM_AXIS_LABELS.visual)
   })
 
   it('tolerates a markdown code fence around the JSON', () => {
@@ -192,10 +192,10 @@ describe('createClaudeAiEvaluator', () => {
     }
   })
 
-  it('embeds the three axis ceilings in the Korean rubric prompt', () => {
-    expect(RUBRIC_SYSTEM_PROMPT).toContain('16점 만점')
-    expect(RUBRIC_SYSTEM_PROMPT).toContain('14점 만점')
-    expect(RUBRIC_SYSTEM_PROMPT).toContain('10점 만점')
+  it('embeds the three axis ceilings in the English rubric prompt', () => {
+    expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 16 points')
+    expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 14 points')
+    expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 10 points')
     expect(RUBRIC_SYSTEM_PROMPT).toContain('JSON')
   })
 })

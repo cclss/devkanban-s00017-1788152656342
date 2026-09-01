@@ -4,8 +4,8 @@
  *
  * This is the OpenAI sibling of {@link module:server/claude-evaluator}. Given the
  * page text (and screenshots when present), it asks a GPT model to score the
- * landing page on the same three Korean rubric axes — 비주얼 / 카피 / CTA — and to
- * reply with the strict JSON envelope. The rubric system prompt and the reply
+ * landing page on the same three rubric axes — Visual / Copy / CTA — and to reply
+ * with the strict JSON envelope. The rubric system prompt and the reply
  * parser/validator are *shared* with the Claude evaluator so both vendors produce
  * an identical {@link LlmAxis}[] contract; only the transport (the OpenAI SDK
  * request/response shape) differs here. A malformed reply is retried exactly once
@@ -13,7 +13,7 @@
  * typed reasons so the pipeline can turn any of them into a `done-partial` report:
  * no key → `missing-key`, an auth rejection → `invalid-key`, a 429 → `rate-limit`.
  *
- * Key hygiene (spec "API 키 무로깅"): the API key is only ever handed to the
+ * Key hygiene (spec "no API key logging"): the API key is only ever handed to the
  * injected chat-create function to construct the client. It is never written into
  * the request body, the rubric prompt, a log line, or any returned/thrown value —
  * this module returns reason *codes*, never the key.
@@ -79,7 +79,7 @@ function buildUserContent(
     if (part) {
       parts.push({
         type: 'text',
-        text: `다음은 ${shot.viewport === 'mobile' ? '모바일' : '데스크톱'} 화면 스크린샷입니다.`,
+        text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
       })
       parts.push(part)
     }
@@ -87,12 +87,12 @@ function buildUserContent(
   parts.push({
     type: 'text',
     text: [
-      `평가 대상 URL: ${input.url}`,
+      `Target URL: ${input.url}`,
       '',
-      '페이지 텍스트(HTML):',
+      'Page text (HTML):',
       input.html,
       '',
-      '위 자료를 근거로 visual·copy·cta 세 축을 평가해 JSON 하나만 출력하세요.',
+      'Based on the material above, evaluate the visual, copy, and cta axes and output exactly one JSON object.',
     ].join('\n'),
   })
   return parts

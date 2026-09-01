@@ -23,15 +23,15 @@ import {
  * The pipeline is the load→audit→ai→done runner behind `POST /api/analyze`.
  * These tests pin the grain Done-when: the happy-path event *order*, and both
  * failure branches (load → `error-load`, ai → `done-partial`) — all with mocked
- * fetch and an injected AI evaluator, so no real network is touched. Korean
+ * fetch and an injected AI evaluator, so no real network is touched. The
  * load-error / partial copy is asserted against the confirmed report strings.
  */
 
-const HTML = `<!doctype html><html lang="ko"><head>
-  <title>랜딩 페이지</title>
-  <meta name="description" content="설명">
+const HTML = `<!doctype html><html lang="en"><head>
+  <title>Landing page</title>
+  <meta name="description" content="Description">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-</head><body><h1>안녕하세요</h1></body></html>`
+</head><body><h1>Hello</h1></body></html>`
 
 /** A public IPv4 literal — the SSRF guard allows it with no DNS needed. */
 const PUBLIC_URL = 'https://93.184.216.34/'
@@ -43,9 +43,9 @@ function okFetch(html = HTML): LoadFetch {
 
 /** Three well-formed rubric axes summing to 30/40. */
 const AXES: LlmAxis[] = [
-  { id: 'visual', label: '비주얼', score: 12, maxScore: 15, comment: '좋음', suggestions: [] },
-  { id: 'copy', label: '카피', score: 10, maxScore: 15, comment: '보통', suggestions: [] },
-  { id: 'cta', label: 'CTA', score: 8, maxScore: 10, comment: '개선 필요', suggestions: ['버튼 강조'] },
+  { id: 'visual', label: 'Visual', score: 12, maxScore: 15, comment: 'Good', suggestions: [] },
+  { id: 'copy', label: 'Copy', score: 10, maxScore: 15, comment: 'Fair', suggestions: [] },
+  { id: 'cta', label: 'CTA', score: 8, maxScore: 10, comment: 'Needs improvement', suggestions: ['Emphasize the button'] },
 ]
 
 /** An evaluator that always succeeds with {@link AXES}. */
@@ -152,7 +152,7 @@ describe('runAnalysis — load failure → error-load', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
     const report = resultOf(events) as LoadErrorReport
     expect(report.outcome).toBe('error-load')
-    expect(report.message).toBe('페이지를 불러오지 못했습니다: 사설 네트워크 주소는 차단됩니다.')
+    expect(report.message).toBe('Failed to load the page: Private network addresses are blocked.')
   })
 
   it('maps a network error to the connection-failure message', async () => {
@@ -165,7 +165,7 @@ describe('runAnalysis — load failure → error-load', () => {
 
     expect(stages(events)).toEqual(['load', 'error-load'])
     const report = resultOf(events) as LoadErrorReport
-    expect(report.message).toBe('페이지를 불러오지 못했습니다: 페이지에 연결할 수 없습니다.')
+    expect(report.message).toBe('Failed to load the page: Could not connect to the page.')
     expect(report.statusCode).toBeUndefined()
   })
 
@@ -206,7 +206,7 @@ describe('runAnalysis — AI failure → done-partial', () => {
     expect(report.score.llmScore).toBeNull()
     expect(report.llmAxes).toBeNull()
     expect(report.partialReason).toBe(
-      'AI 평가 결과 없음: API 키가 없어 자동 점검 결과만 표시합니다.',
+      'AI evaluation unavailable: no API key was provided, so only the automated audit results are shown.',
     )
   })
 
@@ -221,7 +221,7 @@ describe('runAnalysis — AI failure → done-partial', () => {
     const report = resultOf(events) as AnalysisReport
     expect(report.outcome).toBe('done-partial')
     expect(report.partialReason).toBe(
-      'AI 평가 결과 없음: API 키 오류로 자동 점검 결과만 표시합니다.',
+      'AI evaluation unavailable: an API key error occurred, so only the automated audit results are shown.',
     )
   })
 
@@ -235,7 +235,7 @@ describe('runAnalysis — AI failure → done-partial', () => {
     })
     const report = resultOf(events) as AnalysisReport
     expect(report.outcome).toBe('done-partial')
-    expect(report.partialReason).toContain('API 키 오류로')
+    expect(report.partialReason).toContain('an API key error occurred')
   })
 
   it('attaches the actionable detail for the AI-failure reason', async () => {
@@ -247,7 +247,7 @@ describe('runAnalysis — AI failure → done-partial', () => {
     const report = resultOf(events) as AnalysisReport
     expect(report.partialDetail).toBeDefined()
     // Detail is the richer explanation, distinct from the terse reason line.
-    expect(report.partialDetail).toContain('거부')
+    expect(report.partialDetail).toContain('rejected')
     expect(report.partialDetail).not.toBe(report.partialReason)
   })
 
@@ -259,7 +259,7 @@ describe('runAnalysis — AI failure → done-partial', () => {
     })
     const report = resultOf(events) as AnalysisReport
     expect(report.partialReason).toBe(
-      'AI 평가 결과 없음: API 사용 한도를 초과하여 자동 점검 결과만 표시합니다.',
+      'AI evaluation unavailable: the API usage limit was exceeded, so only the automated audit results are shown.',
     )
   })
 })

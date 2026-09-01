@@ -9,14 +9,15 @@ import {
 import type { LlmAxis } from '../core/report'
 
 /**
- * The AI stage owns the key-gate and the failure→partial routing (the real
- * model call is a later grain). These tests pin the default evaluator's gate,
- * the score normalisation, and the error containment.
+ * The AI stage owns the key-gate and the failure→partial routing; the real model
+ * call lives in the routing evaluator wired into the pipeline. These tests pin
+ * the default stub evaluator's gate, the score normalisation, and the error
+ * containment.
  */
 
 const AXES: LlmAxis[] = [
-  { id: 'visual', label: '비주얼', score: 15, maxScore: 15, comment: '', suggestions: [] },
-  { id: 'copy', label: '카피', score: 15, maxScore: 15, comment: '', suggestions: [] },
+  { id: 'visual', label: 'Visual', score: 15, maxScore: 15, comment: '', suggestions: [] },
+  { id: 'copy', label: 'Copy', score: 15, maxScore: 15, comment: '', suggestions: [] },
   { id: 'cta', label: 'CTA', score: 10, maxScore: 10, comment: '', suggestions: [] },
 ]
 
@@ -44,7 +45,7 @@ describe('defaultAiEvaluator', () => {
     })
   })
 
-  it('fails with invalid-key when a key is present (real call not wired)', async () => {
+  it('fails with invalid-key when a key is present (stub gate, not the real evaluator)', async () => {
     await expect(
       defaultAiEvaluator({ url: 'x', html: '', apiKey: 'sk-x' }),
     ).resolves.toEqual({ ok: false, reason: 'invalid-key' })

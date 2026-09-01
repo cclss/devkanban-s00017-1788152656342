@@ -37,8 +37,8 @@ const winningEvaluator: AiEvaluator = async () => ({
     label: id,
     score: 13,
     maxScore: 14,
-    comment: '좋음',
-    suggestions: ['개선'],
+    comment: 'Good',
+    suggestions: ['Improve'],
   })),
 })
 

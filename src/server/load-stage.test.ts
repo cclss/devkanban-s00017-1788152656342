@@ -31,14 +31,14 @@ describe('runLoad', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.report.outcome).toBe('error-load')
-      expect(result.report.message).toContain('사설 네트워크')
+      expect(result.report.message).toContain('Private network')
     }
   })
 
   it('blocks an invalid URL', async () => {
     const result = await runLoad('not-a-url', { fetchImpl: okFetch() })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.report.message).toContain('URL 형식')
+    if (!result.ok) expect(result.report.message).toContain('URL format')
   })
 
   it('maps a non-2xx status to an http-error report with the code', async () => {
@@ -63,7 +63,7 @@ describe('runLoad', () => {
       guardOptions: { allowPrivateNetwork: true },
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.report.message).toContain('연결할 수 없습니다')
+    if (!result.ok) expect(result.report.message).toContain('Could not connect')
   })
 
   it('attaches an actionable detail to a load failure', async () => {
@@ -89,6 +89,6 @@ describe('runLoad', () => {
       timeoutMs: 1,
     })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.report.message).toContain('응답 시간이 초과')
+    if (!result.ok) expect(result.report.message).toContain('response timed out')
   })
 })

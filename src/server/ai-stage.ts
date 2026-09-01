@@ -1,19 +1,20 @@
 /**
  * The `ai` stage: the AI-rubric evaluation boundary and its partial-result gate.
  *
- * This grain owns only the *contract and routing* of the AI step, not a real
- * model call (that is a later grain). The stage takes an {@link AiEvaluator} —
- * an injected boundary that, given the page text and an API key, returns either
- * the three scored {@link LlmAxis} axes or a typed failure. The pipeline turns a
- * failure into a `done-partial` report (60-point auto-audit only); a success
- * into a full `done` report.
+ * This module owns the *contract and routing* of the AI step. The stage takes an
+ * {@link AiEvaluator} — an injected boundary that, given the page text and an API
+ * key, returns either the three scored {@link LlmAxis} axes or a typed failure.
+ * The pipeline turns a failure into a `done-partial` report (60-point auto-audit
+ * only); a success into a full `done` report.
  *
- * The default evaluator, {@link defaultAiEvaluator}, encodes the baseline
- * key-gate: no key → `missing-key`; a key present → `invalid-key`, because the
- * real Claude call is not wired yet. So out of the box every run with a key
- * still completes as a partial result, and a later grain swaps in an evaluator
- * that actually calls the model. Tests inject their own evaluator to exercise
- * both the happy path and each failure branch without a network.
+ * The real evaluation lives elsewhere: the pipeline wires
+ * `DEFAULT_AI_EVALUATOR = createRoutingAiEvaluator()`, which makes real
+ * Claude/OpenAI SDK calls, so a valid API key performs a genuine evaluation — it
+ * is not a mock. The {@link defaultAiEvaluator} in this module is only a minimal
+ * key-gate stub (no key → `missing-key`; a key present → `invalid-key`); it is
+ * *not* used by the pipeline and exists only as a trivial baseline for tests.
+ * Tests inject their own evaluator to exercise both the happy path and each
+ * failure branch without a network.
  *
  * Boundary: standalone backend module reusing only `core/report` types and the
  * `analysis-copy` failure-reason vocabulary. It performs no I/O itself.
@@ -87,9 +88,11 @@ export function sumAxisScores(axes: readonly LlmAxis[]): number {
 }
 
 /**
- * Baseline evaluator: the key-gate only. No key → `missing-key`; a key present →
- * `invalid-key`, since the real Claude call is not wired in this grain. A later
- * grain replaces this with an evaluator that actually calls the model.
+ * Baseline key-gate stub: no key → `missing-key`; a key present → `invalid-key`.
+ * It never calls a model. **This is not wired into the pipeline** — `/api/analyze`
+ * uses `DEFAULT_AI_EVALUATOR = createRoutingAiEvaluator()`, the real
+ * Claude/OpenAI evaluator, so a valid key performs a real evaluation. This stub
+ * exists only as a trivial default for tests/callers that want no network.
  */
 export const defaultAiEvaluator: AiEvaluator = async ({ apiKey }) => {
   if (!hasApiKey(apiKey)) {

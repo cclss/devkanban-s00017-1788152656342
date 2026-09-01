@@ -37,9 +37,9 @@ function reply(text: string): OpenAI.Chat.Completions.ChatCompletion {
 
 const VALID_JSON = JSON.stringify({
   axes: [
-    { id: 'visual', score: 15, comment: '레이아웃이 깔끔합니다.', suggestions: ['여백을 늘리세요.'] },
-    { id: 'copy', score: 11, comment: '문구가 명확합니다.', suggestions: [] },
-    { id: 'cta', score: 8, comment: 'CTA가 눈에 띕니다.', suggestions: ['색 대비를 높이세요.'] },
+    { id: 'visual', score: 15, comment: 'The layout is clean.', suggestions: ['Increase the whitespace.'] },
+    { id: 'copy', score: 11, comment: 'The wording is clear.', suggestions: [] },
+    { id: 'cta', score: 8, comment: 'The CTA stands out.', suggestions: ['Increase the color contrast.'] },
   ],
 })
 

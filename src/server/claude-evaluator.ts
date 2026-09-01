@@ -3,14 +3,14 @@
  * injected {@link AiEvaluator} boundary.
  *
  * Given the page text (and screenshots when present), it asks Claude to score
- * the landing page on the three Korean rubric axes — 비주얼 / 카피 / CTA — and to
- * reply with a strict JSON envelope. The reply is parsed and validated into
+ * the landing page on the three rubric axes — Visual / Copy / CTA — and to reply
+ * with a strict JSON envelope. The reply is parsed and validated into
  * {@link LlmAxis}[]; a malformed reply is retried exactly once before the stage
  * degrades to a typed `parse-failure`. Provider failures map to typed reasons so
  * the pipeline can turn any of them into a `done-partial` report: no key →
  * `missing-key`, an auth rejection → `invalid-key`, a 429 → `rate-limit`.
  *
- * Key hygiene (spec "API 키 무로깅"): the API key is only ever handed to the
+ * Key hygiene (spec "no API key logging"): the API key is only ever handed to the
  * injected message-create function to construct the client. It is never written
  * into the request body, the rubric prompt, a log line, or any returned/thrown
  * value — this module returns reason *codes*, never the key.
@@ -62,24 +62,24 @@ const defaultCreateMessage: AnthropicMessageCreate = (apiKey, params) =>
   new Anthropic({ apiKey }).messages.create(params)
 
 /**
- * The Korean rubric system prompt. Tone: a concise, professional landing-page
- * quality reviewer that speaks plain Korean (평서형 `합니다.` 종결) and returns
- * *only* the JSON envelope — no prose, no code fences. The three axes and their
- * point ceilings match {@link LLM_AXIS_MAX_SCORES}.
+ * The English rubric system prompt. Tone: a concise, professional landing-page
+ * quality reviewer that writes plain English and returns *only* the JSON envelope
+ * — no prose, no code fences. The three axes and their point ceilings match
+ * {@link LLM_AXIS_MAX_SCORES}.
  */
 export const RUBRIC_SYSTEM_PROMPT = [
-  '당신은 랜딩페이지 품질을 평가하는 전문가입니다.',
-  '제공된 페이지 텍스트와 스크린샷(있는 경우)을 근거로 아래 3개 축을 평가합니다.',
+  'You are an expert who evaluates landing-page quality.',
+  'Based on the provided page text and screenshots (when available), evaluate the three axes below.',
   '',
-  '평가 축과 만점:',
-  `- visual(비주얼): ${LLM_AXIS_MAX_SCORES.visual}점 만점. 레이아웃·여백·타이포그래피·시각적 위계를 평가합니다.`,
-  `- copy(카피): ${LLM_AXIS_MAX_SCORES.copy}점 만점. 헤드라인·가치 제안·문구의 명확성과 설득력을 평가합니다.`,
-  `- cta(CTA): ${LLM_AXIS_MAX_SCORES.cta}점 만점. 행동 유도 문구의 명확성·노출·반복 배치를 평가합니다.`,
+  'Evaluation axes and maximum scores:',
+  `- visual: out of ${LLM_AXIS_MAX_SCORES.visual} points. Evaluate layout, spacing, typography, and visual hierarchy.`,
+  `- copy: out of ${LLM_AXIS_MAX_SCORES.copy} points. Evaluate the clarity and persuasiveness of the headline, value proposition, and wording.`,
+  `- cta: out of ${LLM_AXIS_MAX_SCORES.cta} points. Evaluate the clarity, prominence, and repeated placement of the call-to-action.`,
   '',
-  '각 축의 score는 0 이상 만점 이하의 정수입니다.',
-  'comment는 한국어 한 문장 평가이고, suggestions는 한국어 개선 제안 문자열 배열입니다.',
+  "Each axis's score is an integer between 0 and its maximum, inclusive.",
+  'comment is a one-sentence evaluation in English, and suggestions is an array of English improvement-suggestion strings.',
   '',
-  '반드시 아래 형식의 JSON 하나만 출력합니다. 코드펜스나 다른 설명 문장을 덧붙이지 않습니다.',
+  'Output exactly one JSON object in the format below. Do not add code fences or any other explanatory text.',
   '{"axes":[' +
     '{"id":"visual","score":0,"comment":"","suggestions":[]},' +
     '{"id":"copy","score":0,"comment":"","suggestions":[]},' +
@@ -134,7 +134,7 @@ function buildUserContent(input: AiEvaluatorInput): Anthropic.ContentBlockParam[
     if (block) {
       blocks.push({
         type: 'text',
-        text: `다음은 ${shot.viewport === 'mobile' ? '모바일' : '데스크톱'} 화면 스크린샷입니다.`,
+        text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
       })
       blocks.push(block)
     }
@@ -142,12 +142,12 @@ function buildUserContent(input: AiEvaluatorInput): Anthropic.ContentBlockParam[
   blocks.push({
     type: 'text',
     text: [
-      `평가 대상 URL: ${input.url}`,
+      `Target URL: ${input.url}`,
       '',
-      '페이지 텍스트(HTML):',
+      'Page text (HTML):',
       input.html,
       '',
-      '위 자료를 근거로 visual·copy·cta 세 축을 평가해 JSON 하나만 출력하세요.',
+      'Based on the material above, evaluate the visual, copy, and cta axes and output exactly one JSON object.',
     ].join('\n'),
   })
   return blocks
