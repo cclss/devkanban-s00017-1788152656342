@@ -1,7 +1,7 @@
 /**
  * localStorage contract for the saved-URL history of the URL form.
  *
- * Sibling to the API-key storage adapter (`testtools/api-key-storage.ts`): the
+ * Sibling to the API-key storage adapter (`api-key-storage.ts`): the
  * grader keeps the recently-diagnosed site addresses in the browser only — never
  * on a server — so a returning user can pick a previous URL instead of retyping
  * it (Design §Local storage key management, extended to the URL form). Unlike the three

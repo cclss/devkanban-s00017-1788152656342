@@ -5,12 +5,11 @@ import ApiKeyPanel, {
   API_KEY_MODELS,
   API_KEY_PANEL_STRINGS,
   API_KEY_PROVIDERS,
-  API_KEY_PRESETS,
   modelsForProvider,
   resolveModelForProvider,
 } from './ApiKeyPanel'
 import { API_KEY_STORAGE_KEYS } from './api-key-storage'
-import { CONTROL_HELP } from '../control-help'
+import { CONTROL_HELP } from './control-help'
 
 afterEach(() => {
   cleanup()
@@ -19,6 +18,11 @@ afterEach(() => {
 beforeEach(() => {
   window.localStorage.clear()
 })
+
+/** Presses the panel's Save button. */
+function clickSave() {
+  fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }))
+}
 
 describe('ApiKeyPanel', () => {
   it('persists the seeded provider/model/key to the three keys on mount', () => {
@@ -49,53 +53,71 @@ describe('ApiKeyPanel', () => {
     expect(keyInput.type).toBe('password')
   })
 
-  it('writes the model key immediately on change (no save button)', () => {
-    render(<ApiKeyPanel />)
-    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.modelLabel), {
-      target: { value: 'claude-opus-5' },
-    })
-    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).toBe(
-      'claude-opus-5',
-    )
-  })
-
-  it('writes the key immediately as the user types', () => {
+  it('does not persist a typed key until Save is pressed', () => {
     render(<ApiKeyPanel />)
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
       target: { value: 'sk-typed-key' },
     })
+    // No autosave: storage still holds the empty mount seed.
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe('')
+
+    clickSave()
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
       'sk-typed-key',
     )
   })
 
-  it('applies the no-key / valid-key / invalid-key presets to the key + storage', () => {
+  it('persists the provider and model together on Save', () => {
     render(<ApiKeyPanel />)
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.modelLabel), {
+      target: { value: 'claude-opus-5' },
+    })
+    // Not written yet.
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).toBe(
+      API_KEY_MODELS[0].id,
+    )
+    clickSave()
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).toBe(
+      'claude-opus-5',
+    )
+  })
+
+  it('shows a "Saved" confirmation after Save and clears it on the next edit', () => {
+    render(<ApiKeyPanel />)
+    expect(screen.queryByText(API_KEY_PANEL_STRINGS.saveConfirm)).toBeNull()
+    clickSave()
+    expect(screen.getByText(API_KEY_PANEL_STRINGS.saveConfirm)).toBeDefined()
+    // Editing a field marks the state unsaved again.
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+      target: { value: 'sk-new' },
+    })
+    expect(screen.queryByText(API_KEY_PANEL_STRINGS.saveConfirm)).toBeNull()
+  })
+
+  it('keeps a typed key in the input across a page re-render without Save', () => {
+    // The panel stays mounted while the rest of the app re-renders (e.g. the user
+    // clicks a saved-URL chip). Its local state must hold the typed key so the
+    // field is never wiped mid-entry, even before Save.
+    const { rerender } = render(<ApiKeyPanel />)
     const keyInput = screen.getByLabelText(
       API_KEY_PANEL_STRINGS.keyLabel,
     ) as HTMLInputElement
-
-    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }))
-    expect(keyInput.value).toBe(API_KEY_PRESETS.valid)
-    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
-      API_KEY_PRESETS.valid,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetInvalid }))
-    expect(keyInput.value).toBe(API_KEY_PRESETS.invalid)
-
-    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetNone }))
-    expect(keyInput.value).toBe('')
-    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe('')
+    fireEvent.change(keyInput, { target: { value: 'sk-still-here' } })
+    rerender(<ApiKeyPanel />)
+    expect(
+      (screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel) as HTMLInputElement)
+        .value,
+    ).toBe('sk-still-here')
   })
 
-  it('keeps a typed key across an unmount+remount (survives a page reload)', () => {
+  it('keeps a saved key across an unmount+remount (survives a page reload)', () => {
     const { unmount } = render(<ApiKeyPanel />)
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
       target: { value: 'sk-persist-me' },
     })
+    clickSave()
     unmount()
-    // A brand-new mount reads the same localStorage — the key must reappear.
+    // A brand-new mount reads the same localStorage — the saved key must reappear.
     render(<ApiKeyPanel />)
     expect(
       (screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel) as HTMLInputElement)
@@ -127,19 +149,24 @@ describe('ApiKeyPanel', () => {
     expect(keyInput.value).toBe('sk-secret')
   })
 
-  it('shows the persistence hint describing local auto-save', () => {
+  it('shows the persistence hint describing the Save behavior', () => {
     render(<ApiKeyPanel />)
     expect(screen.getByText(API_KEY_PANEL_STRINGS.keyHint)).toBeDefined()
   })
 
-  it('fires onChange with the whole form value on each change', () => {
+  it('fires onSave with the whole form value only when Save is pressed', () => {
     const seen: { provider: string; model: string; apiKey: string }[] = []
-    render(<ApiKeyPanel onChange={(value) => seen.push(value)} />)
-    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }))
+    render(<ApiKeyPanel onSave={(value) => seen.push(value)} />)
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+      target: { value: 'sk-my-key' },
+    })
+    // Editing alone does not fire onSave.
+    expect(seen).toHaveLength(0)
+    clickSave()
     expect(seen[seen.length - 1]).toEqual({
       provider: 'anthropic',
       model: API_KEY_MODELS[0].id,
-      apiKey: API_KEY_PRESETS.valid,
+      apiKey: 'sk-my-key',
     })
   })
 
@@ -179,13 +206,15 @@ describe('ApiKeyPanel', () => {
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.providerLabel), {
       target: { value: 'openai' },
     })
-    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.provider)).toBe('openai')
-    // The stored Claude model is replaced by OpenAI's first model.
-    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).toBe('gpt-4o')
+    // The shown model flips to OpenAI's first model in local state...
     expect(
       (screen.getByLabelText(API_KEY_PANEL_STRINGS.modelLabel) as HTMLSelectElement)
         .value,
     ).toBe('gpt-4o')
+    // ...and Save persists the reconciled pair.
+    clickSave()
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.provider)).toBe('openai')
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.model)).toBe('gpt-4o')
   })
 
   it('reconciles a stale provider/model pair from storage on mount', () => {
@@ -200,7 +229,7 @@ describe('ApiKeyPanel', () => {
     ).toBe('gpt-4o')
   })
 
-  it('keeps a GPT key typed under the OpenAI provider in storage', () => {
+  it('persists a GPT key typed under the OpenAI provider on Save', () => {
     render(<ApiKeyPanel />)
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.providerLabel), {
       target: { value: 'openai' },
@@ -208,6 +237,7 @@ describe('ApiKeyPanel', () => {
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
       target: { value: 'sk-my-gpt-key' },
     })
+    clickSave()
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.provider)).toBe('openai')
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
       'sk-my-gpt-key',
@@ -220,16 +250,14 @@ describe('ApiKeyPanel — per-control ⓘ help', () => {
     return screen.getByRole('button', { name: `Help: ${entry.title}` })
   }
 
-  it('renders a ⓘ trigger next to provider, model, key, reveal, and each preset', () => {
+  it('renders a ⓘ trigger next to provider, model, key, reveal, and Save', () => {
     render(<ApiKeyPanel />)
     for (const entry of [
       CONTROL_HELP.provider,
       CONTROL_HELP.model,
       CONTROL_HELP.apiKey,
       CONTROL_HELP.revealKey,
-      CONTROL_HELP.presetNone,
-      CONTROL_HELP.presetValid,
-      CONTROL_HELP.presetInvalid,
+      CONTROL_HELP.saveKey,
     ]) {
       expect(helpTrigger(entry).getAttribute('aria-expanded')).toBe('false')
     }
@@ -241,14 +269,16 @@ describe('ApiKeyPanel — per-control ⓘ help', () => {
     fireEvent.click(helpTrigger(CONTROL_HELP.apiKey))
     expect(screen.getByText(CONTROL_HELP.apiKey.body)).toBeDefined()
 
-    // The preset control still applies its value with the help icon in place.
-    const keyInput = screen.getByLabelText(
-      API_KEY_PANEL_STRINGS.keyLabel,
-    ) as HTMLInputElement
+    // The Save control still persists the current value with the help icon in place.
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+      target: { value: 'sk-help-check' },
+    })
     fireEvent.click(
-      screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }),
+      screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }),
     )
-    expect(keyInput.value).toBe(API_KEY_PRESETS.valid)
+    expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
+      'sk-help-check',
+    )
   })
 })
 

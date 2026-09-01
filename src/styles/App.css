@@ -223,6 +223,68 @@
   color: var(--color-status-danger);
 }
 
+/* ── API key panel ──────────────────────────────────────────────
+ * Real product block: provider/model selects + masked key input + explicit
+ * Save. Stacked fields on the shared card surface. Colors/spacing/typography
+ * come from tokens; flex layout is an implementation setting. */
+.api-key {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.api-key__title {
+  margin: 0;
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.api-key__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.api-key__label {
+  font-size: var(--text-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Key input + reveal toggle sit on one row; the input takes the free space. */
+.api-key__key-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-sm);
+}
+
+.api-key__key-row .api-key__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Persistence reassurance under the key field. */
+.api-key__hint {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-text-disabled);
+  line-height: var(--line-height-base);
+}
+
+/* Save row: the Save button and its "Saved" confirmation side by side. */
+.api-key__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.api-key__saved {
+  font-size: var(--text-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-primary);
+}
+
 /* ── URL form (grain-4) ─────────────────────────────────────────
  * First grader block: URL input + start/reset action, stacked label over an
  * input+button row. Colors/spacing/radius come from tokens; flex layout is an
@@ -905,7 +967,7 @@
 
 /* When the ⓘ sits inside a row of stretched controls (the key input + reveal
  * toggle), keep the small icon vertically centred rather than stretched. */
-.testtools__key-row > .info-tooltip {
+.api-key__key-row > .info-tooltip {
   align-self: center;
 }
 
@@ -1505,26 +1567,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-}
-
-/* Key input + reveal toggle sit on one row; the input takes the free space. */
-.testtools__key-row {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-xs);
-}
-
-.testtools__key-row .testtools__input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* Persistence reassurance under the key field. */
-.testtools__hint {
-  margin: var(--space-xs) 0 0;
-  font-size: var(--text-size-xs);
-  color: var(--color-text-disabled);
-  line-height: var(--line-height-base);
 }
 
 /* Active (current stage / selected conflict mode) button: accent-tinted. */

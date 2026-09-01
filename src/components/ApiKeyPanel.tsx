@@ -1,16 +1,19 @@
 /**
- * Test-tool: API key + provider/model entry (Design §Test-tools panel).
+ * API key + provider/model entry — a real product block of the grader screen.
  *
- * This is mockup scaffolding, not a real product surface: the real user's key
- * entry is stubbed here so the wiring can be exercised by hand. The panel lets a
- * tester pick a provider/model, type a masked key, and jump the key to one of the
- * three "permission" presets — no key / valid key / invalid key. Every change is
- * mirrored to the three owned localStorage keys on the spot (no save button), and
- * the three keys are read back on mount so a revisit is pre-filled.
+ * This is the surface where the user enters the credentials the AI rubric
+ * evaluation uses. The panel lets the user pick a provider/model and type a
+ * masked key, then persist all three to browser-local storage with an explicit
+ * "Save" button (Design §Local storage key management). Nothing is written on
+ * every keystroke: the field holds the typed value in component state, and only
+ * a Save press mirrors it to the three owned localStorage keys — so switching the
+ * URL below (which re-renders the app but keeps this panel mounted) never wipes a
+ * key the user is still typing.
  *
- * The key affects nothing in the flow yet (there is no real `/api/analyze`); AI
- * failure is simulated separately by the stage simulator. So this panel is
- * self-contained: it owns its own form state + persistence and needs no props.
+ * The three keys are read back on mount so a revisit / reload is pre-filled, and a
+ * reveal toggle flips the masked field to plain text so a saved value can be
+ * confirmed by eye. Entering no key is a valid state: the app simply runs without
+ * AI evaluation (partial result), so this panel imposes no "key required" gate.
  *
  * Boundary: presentational + local persistence via the storage adapter. It holds
  * only its own form state; all copy is co-located English domain content.
@@ -21,8 +24,8 @@ import {
   readStored,
   writeStored,
 } from './api-key-storage'
-import InfoTooltip from '../InfoTooltip'
-import { CONTROL_HELP } from '../control-help'
+import InfoTooltip from './InfoTooltip'
+import { CONTROL_HELP } from './control-help'
 
 /** Provider options. Anthropic (Claude) and OpenAI (GPT) are both supported. */
 export const API_KEY_PROVIDERS = [
@@ -64,17 +67,6 @@ export function resolveModelForProvider(
   return options[0]?.id ?? API_KEY_MODELS[0].id
 }
 
-/**
- * The three "permission" presets the key buttons apply. `none` clears the key
- * (missing-key case), `valid` / `invalid` set demo strings of the right shape so
- * the tester can drive the valid vs. invalid-key branches by eye.
- */
-export const API_KEY_PRESETS = {
-  none: '',
-  valid: 'sk-valid-demo-0000000000',
-  invalid: 'invalid-demo-key',
-} as const
-
 /** User-facing copy for the panel. Exported so tests assert one source. */
 export const API_KEY_PANEL_STRINGS = {
   heading: 'API key settings',
@@ -82,39 +74,39 @@ export const API_KEY_PANEL_STRINGS = {
   modelLabel: 'Model',
   keyLabel: 'API key',
   keyPlaceholder: 'sk-...',
-  presetGroupLabel: 'Key presets',
-  presetNone: 'No key',
-  presetValid: 'Valid key',
-  presetInvalid: 'Invalid key',
+  /** Button that persists the current provider/model/key to this browser. */
+  save: 'Save',
+  /** Confirmation shown after a save; cleared as soon as a field changes. */
+  saveConfirm: 'Saved',
   /** Button that reveals the masked key so a saved value can be confirmed. */
   revealShow: 'Show key',
   /** Button that re-masks a revealed key. */
   revealHide: 'Hide key',
   /**
-   * Reassures the user the key is persisted locally, so a masked (dotted) field
-   * is not mistaken for a lost value after a failed run or a page reload.
+   * Tells the user the key is only kept once Save is pressed, so a masked
+   * (dotted) field is not mistaken for a lost value and so they know to save.
    */
   keyHint:
-    'The key you enter is saved automatically in this browser, so you will not need to enter it again.',
+    'Press Save to keep the key in this browser, so you will not need to enter it again. Leave it empty to run without AI evaluation.',
 } as const
 
 const DEFAULT_PROVIDER = API_KEY_PROVIDERS[0].id
 const DEFAULT_MODEL = API_KEY_MODELS[0].id
 
 /**
- * @param props Optional `onChange` fired after each field change with the whole
- *   current form value, purely so a host/test can observe changes. The panel is
+ * @param props Optional `onSave` fired after a successful Save with the persisted
+ *   form value, purely so a host/test can observe the save. The panel is
  *   otherwise self-contained (state + localStorage).
  */
 export interface ApiKeyPanelProps {
-  onChange?: (value: {
+  onSave?: (value: {
     provider: string
     model: string
     apiKey: string
   }) => void
 }
 
-export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
+export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
   // Seed from localStorage on first render so a revisit is pre-filled; fall back
   // to the first provider/model and an empty key.
   const [provider, setProvider] = useState(
@@ -135,65 +127,71 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
   // Reveal the masked key on demand so a persisted value can be confirmed by
   // eye. Purely presentational — it never touches storage. Defaults to masked.
   const [revealed, setRevealed] = useState(false)
+  // Shows the "Saved" confirmation after a Save; cleared on the next edit so it
+  // never lingers over unsaved changes.
+  const [saved, setSaved] = useState(false)
 
   const providerId = useId()
   const modelId = useId()
   const keyId = useId()
   const hintId = useId()
+  const statusId = useId()
 
   // Persist whatever was seeded (including the defaults) once on mount, so the
-  // three keys always exist after the panel has been shown.
+  // three keys always exist after the panel has been shown. This is the only
+  // implicit write; every later write goes through the explicit Save button.
   useEffect(() => {
     writeStored(API_KEY_STORAGE_KEYS.provider, provider)
     writeStored(API_KEY_STORAGE_KEYS.model, model)
     writeStored(API_KEY_STORAGE_KEYS.apiKey, apiKey)
-    // Mount-only sync: subsequent writes happen in the change handlers below.
+    // Mount-only seed: subsequent writes happen only on Save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const emitChange = (next: { provider: string; model: string; apiKey: string }) => {
-    onChange?.(next)
-  }
-
+  // Any field edit invalidates a shown "Saved" note (the change is now unsaved).
   const handleProvider = (value: string) => {
     setProvider(value)
-    writeStored(API_KEY_STORAGE_KEYS.provider, value)
+    setSaved(false)
     // Switching provider may orphan the current model (it belongs to the other
-    // vendor); reconcile to the new provider's default and persist both.
+    // vendor); reconcile to the new provider's default in local state only.
     const nextModel = resolveModelForProvider(value, model)
-    if (nextModel !== model) {
-      setModel(nextModel)
-      writeStored(API_KEY_STORAGE_KEYS.model, nextModel)
-    }
-    emitChange({ provider: value, model: nextModel, apiKey })
+    if (nextModel !== model) setModel(nextModel)
   }
 
   const handleModel = (value: string) => {
     setModel(value)
-    writeStored(API_KEY_STORAGE_KEYS.model, value)
-    emitChange({ provider, model: value, apiKey })
+    setSaved(false)
   }
 
   const handleKey = (value: string) => {
     setApiKey(value)
-    writeStored(API_KEY_STORAGE_KEYS.apiKey, value)
-    emitChange({ provider, model, apiKey: value })
+    setSaved(false)
+  }
+
+  // Explicit persistence: mirror the current form to the three owned keys. This
+  // is the only path (besides the mount seed) that writes storage.
+  const handleSave = () => {
+    writeStored(API_KEY_STORAGE_KEYS.provider, provider)
+    writeStored(API_KEY_STORAGE_KEYS.model, model)
+    writeStored(API_KEY_STORAGE_KEYS.apiKey, apiKey)
+    setSaved(true)
+    onSave?.({ provider, model, apiKey })
   }
 
   return (
-    <section className="testtools__group" aria-label={API_KEY_PANEL_STRINGS.heading}>
-      <h3 className="testtools__group-title">{API_KEY_PANEL_STRINGS.heading}</h3>
+    <section className="api-key grader-card" aria-label={API_KEY_PANEL_STRINGS.heading}>
+      <h3 className="api-key__title">{API_KEY_PANEL_STRINGS.heading}</h3>
 
-      <div className="testtools__field">
+      <div className="api-key__field">
         <div className="control-help">
-          <label className="testtools__label" htmlFor={providerId}>
+          <label className="api-key__label" htmlFor={providerId}>
             {API_KEY_PANEL_STRINGS.providerLabel}
           </label>
           <InfoTooltip entry={CONTROL_HELP.provider} />
         </div>
         <select
           id={providerId}
-          className="field-input testtools__select"
+          className="field-input api-key__select"
           value={provider}
           onChange={(event) => handleProvider(event.target.value)}
         >
@@ -205,16 +203,16 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
         </select>
       </div>
 
-      <div className="testtools__field">
+      <div className="api-key__field">
         <div className="control-help">
-          <label className="testtools__label" htmlFor={modelId}>
+          <label className="api-key__label" htmlFor={modelId}>
             {API_KEY_PANEL_STRINGS.modelLabel}
           </label>
           <InfoTooltip entry={CONTROL_HELP.model} />
         </div>
         <select
           id={modelId}
-          className="field-input testtools__select"
+          className="field-input api-key__select"
           value={model}
           onChange={(event) => handleModel(event.target.value)}
         >
@@ -226,20 +224,20 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
         </select>
       </div>
 
-      <div className="testtools__field">
+      <div className="api-key__field">
         <div className="control-help">
-          <label className="testtools__label" htmlFor={keyId}>
+          <label className="api-key__label" htmlFor={keyId}>
             {API_KEY_PANEL_STRINGS.keyLabel}
           </label>
           <InfoTooltip entry={CONTROL_HELP.apiKey} />
         </div>
-        <div className="testtools__key-row">
+        <div className="api-key__key-row">
           {/* Masked by default so the key is not shown in plain text; the reveal
               toggle flips it to text so a saved key can be confirmed. */}
           <input
             id={keyId}
             type={revealed ? 'text' : 'password'}
-            className="field-input testtools__input"
+            className="field-input api-key__input"
             value={apiKey}
             placeholder={API_KEY_PANEL_STRINGS.keyPlaceholder}
             autoComplete="off"
@@ -248,7 +246,7 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
           />
           <button
             type="button"
-            className="btn testtools__btn"
+            className="btn api-key__btn"
             aria-pressed={revealed}
             onClick={() => setRevealed((current) => !current)}
           >
@@ -258,43 +256,28 @@ export default function ApiKeyPanel({ onChange }: ApiKeyPanelProps) {
           </button>
           <InfoTooltip entry={CONTROL_HELP.revealKey} />
         </div>
-        {/* Tells the user the key persists locally, so a dotted field after a
-            failed run or reload is not mistaken for a lost value. */}
-        <p id={hintId} className="testtools__hint">
+        {/* Tells the user the key persists locally only after Save, so a dotted
+            field after a failed run or reload is not mistaken for a lost value. */}
+        <p id={hintId} className="api-key__hint">
           {API_KEY_PANEL_STRINGS.keyHint}
         </p>
       </div>
 
-      <div className="testtools__buttons" role="group" aria-label={API_KEY_PANEL_STRINGS.presetGroupLabel}>
+      <div className="api-key__actions">
         <span className="control-help">
           <button
             type="button"
-            className="btn testtools__btn"
-            onClick={() => handleKey(API_KEY_PRESETS.none)}
+            className="btn btn--primary api-key__save"
+            onClick={handleSave}
           >
-            {API_KEY_PANEL_STRINGS.presetNone}
+            {API_KEY_PANEL_STRINGS.save}
           </button>
-          <InfoTooltip entry={CONTROL_HELP.presetNone} />
+          <InfoTooltip entry={CONTROL_HELP.saveKey} />
         </span>
-        <span className="control-help">
-          <button
-            type="button"
-            className="btn testtools__btn"
-            onClick={() => handleKey(API_KEY_PRESETS.valid)}
-          >
-            {API_KEY_PANEL_STRINGS.presetValid}
-          </button>
-          <InfoTooltip entry={CONTROL_HELP.presetValid} />
-        </span>
-        <span className="control-help">
-          <button
-            type="button"
-            className="btn testtools__btn"
-            onClick={() => handleKey(API_KEY_PRESETS.invalid)}
-          >
-            {API_KEY_PANEL_STRINGS.presetInvalid}
-          </button>
-          <InfoTooltip entry={CONTROL_HELP.presetInvalid} />
+        {/* Announce the save so a masked field is not mistaken for "nothing
+            happened"; cleared on the next edit. */}
+        <span id={statusId} className="api-key__saved" role="status" aria-live="polite">
+          {saved ? API_KEY_PANEL_STRINGS.saveConfirm : ''}
         </span>
       </div>
     </section>

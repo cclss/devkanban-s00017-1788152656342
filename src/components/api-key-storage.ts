@@ -1,12 +1,12 @@
 /**
- * localStorage contract for the API-key test tool.
+ * localStorage contract for the API-key panel.
  *
  * The grader never sends the API key to a server for storage — it lives only in
  * the browser (Design §Local storage key management). Exactly three keys are used, named
- * here so both the {@link module:components/testtools/ApiKeyPanel} and its tests
+ * here so both the {@link module:components/ApiKeyPanel} and its tests
  * read the single source of the key names. The read/write helpers guard access
  * so a missing / throwing `localStorage` (private mode, SSR, jsdom quirks) never
- * crashes the panel — a test tool must not take the app down.
+ * crashes the panel — the key entry must not take the app down.
  *
  * Boundary: storage adapter. It wraps the one browser API this feature touches so
  * the panel and its tests depend on these helpers, not on `localStorage` directly.
@@ -36,6 +36,6 @@ export function writeStored(key: string, value: string): void {
   try {
     window.localStorage.setItem(key, value)
   } catch {
-    // Ignore: persistence is best-effort for this test tool.
+    // Ignore: persistence is best-effort for this browser-only key entry.
   }
 }

@@ -52,8 +52,8 @@ import {
   PROGRESS_STEPS,
 } from './components/ProgressStepper'
 import { GRADE_LABELS } from './components/report-labels'
-import { API_KEY_PANEL_STRINGS, API_KEY_PRESETS } from './components/testtools/ApiKeyPanel'
-import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
+import { API_KEY_PANEL_STRINGS } from './components/ApiKeyPanel'
+import { API_KEY_STORAGE_KEYS } from './components/api-key-storage'
 import { STAGE_ATTRIBUTE } from './state/useStage'
 import { resultEvent, serializeEvent, stageEvent } from './server/stage-events'
 import {
@@ -71,6 +71,17 @@ import { doneReport } from './core/__fixtures__/report-fixtures'
 const RUN_STAGE_ORDER = ['load', 'audit', 'ai', 'done'] as const
 
 const TEST_URL = 'https://landing.example.com'
+
+/** A real, well-formed key the user types into the API-key panel. */
+const VALID_KEY = 'sk-valid-real-key-0000'
+
+/** Types `key` into the API-key panel and presses Save to persist it. */
+function enterAndSaveKey(key: string): void {
+  fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+    target: { value: key },
+  })
+  fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }))
+}
 
 /** The grade cuts a normal (100-point) report may show — never "Grade withheld". */
 const FULL_GRADE_LABELS = [
@@ -157,12 +168,10 @@ describe('SC-1 — normal diagnosis: 4 stages advance in order within 1 minute, 
 
     try {
       render(<App />)
-      // Enter valid credentials via the API-key test tool (valid-key preset).
-      fireEvent.click(
-        screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }),
-      )
+      // Enter valid credentials in the API-key panel and Save them.
+      enterAndSaveKey(VALID_KEY)
       expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
-        API_KEY_PRESETS.valid,
+        VALID_KEY,
       )
 
       // When: enter a public URL and start the diagnosis — the time budget clock
@@ -180,7 +189,7 @@ describe('SC-1 — normal diagnosis: 4 stages advance in order within 1 minute, 
       expect(String(calledUrl)).not.toContain('landing.example.com')
       expect(JSON.parse(init.body as string)).toMatchObject({
         url: TEST_URL,
-        apiKey: API_KEY_PRESETS.valid,
+        apiKey: VALID_KEY,
         provider: 'anthropic',
         model: 'claude-sonnet-5',
       })
@@ -312,9 +321,7 @@ async function driveToCompletedReport(): Promise<void> {
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
-  fireEvent.click(
-    screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetValid }),
-  )
+  enterAndSaveKey(VALID_KEY)
   fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
     target: { value: TEST_URL },
   })

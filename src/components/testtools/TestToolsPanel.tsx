@@ -1,15 +1,15 @@
 /**
  * The test-tools panel that sits above the three grader blocks (Design
  * §Test-tools panel). It is a collapsible `<details>` region — mockup scaffolding, not a
- * real product surface — that gathers the API-key tool and the stage/conflict
- * simulator in one place so a tester can wire and shake the UI by hand.
+ * real product surface — that holds the stage/conflict simulator so a tester can
+ * shake the UI's state machine by hand. (The API-key entry moved out to a real
+ * product block; only the simulator remains here.)
  *
- * It owns no flow state: it renders {@link ApiKeyPanel} (self-contained) and
- * passes the stage/conflict props straight through to {@link StageSimulator}.
+ * It owns no flow state: it passes the stage/conflict props straight through to
+ * {@link StageSimulator}.
  *
  * Boundary: presentational container.
  */
-import ApiKeyPanel from './ApiKeyPanel'
 import StageSimulator, { type ConflictMode } from './StageSimulator'
 import type { Stage } from '../../state/stage'
 
@@ -43,7 +43,6 @@ export default function TestToolsPanel({
       </summary>
       <p className="testtools__note">{TEST_TOOLS_PANEL_STRINGS.note}</p>
       <div className="testtools__groups">
-        <ApiKeyPanel />
         <StageSimulator
           stage={stage}
           onForceStage={onForceStage}

@@ -3,7 +3,7 @@
  *
  * Each control on the grader screen — the URL input, the start/reset diagnosis
  * button, the saved-address chips, the provider/model selects, the API-key input,
- * the reveal toggle, the three key presets, the stage-force buttons, the conflict
+ * the reveal toggle, the Save-key button, the stage-force buttons, the conflict
  * simulator, the markdown download, and the screenshot tabs — gets one short
  * `HelpEntry{title, body}` describing what it does. These render inside the
  * accessible ⓘ popover ({@link module:components/InfoTooltip}) so a user can learn
@@ -39,9 +39,7 @@ export type ControlHelpKey =
   | 'model'
   | 'apiKey'
   | 'revealKey'
-  | 'presetNone'
-  | 'presetValid'
-  | 'presetInvalid'
+  | 'saveKey'
   | 'forceStage'
   | 'conflictSim'
   | 'markdownDownload'
@@ -56,9 +54,7 @@ export const CONTROL_HELP_KEYS = [
   'model',
   'apiKey',
   'revealKey',
-  'presetNone',
-  'presetValid',
-  'presetInvalid',
+  'saveKey',
   'forceStage',
   'conflictSim',
   'markdownDownload',
@@ -99,17 +95,9 @@ export const CONTROL_HELP: Record<ControlHelpKey, HelpEntry> = {
     title: 'Show / hide key',
     body: 'Briefly reveals the masked API key as plain text so you can visually confirm the stored value. Only the display changes on screen; the stored key itself stays the same.',
   },
-  presetNone: {
-    title: 'No-key preset',
-    body: 'Clears the API key in the input. Use it to check the partial-result flow where AI evaluation fails without a key and only the auto-audit results are shown.',
-  },
-  presetValid: {
-    title: 'Valid-key preset',
-    body: 'Fills the input with a well-formed example key. Use it to check the flow where AI evaluation completes successfully.',
-  },
-  presetInvalid: {
-    title: 'Invalid-key preset',
-    body: 'Fills in an example key that is well-formed but not actually valid. Use it to check the flow where a key error makes AI evaluation fail and a partial result is shown.',
+  saveKey: {
+    title: 'Save key',
+    body: 'Saves the provider, model, and API key in this browser so they are reused on your next visit. The key is kept only after you press Save; leave the key empty to run without AI evaluation.',
   },
   forceStage: {
     title: 'Force progress stage',

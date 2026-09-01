@@ -18,8 +18,9 @@ import App from './App'
 import { URL_FORM_STRINGS } from './components/UrlForm'
 import { REPORT_VIEW_STRINGS } from './components/ReportView'
 import { PROGRESS_STEPPER_LABEL } from './components/ProgressStepper'
-import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
-import { API_KEY_PANEL_STRINGS } from './components/testtools/ApiKeyPanel'
+import { API_KEY_STORAGE_KEYS } from './components/api-key-storage'
+import { API_KEY_PANEL_STRINGS } from './components/ApiKeyPanel'
+import { URL_HISTORY_STORAGE_KEY } from './components/url-history'
 import { TEST_TOOLS_PANEL_STRINGS } from './components/testtools/TestToolsPanel'
 
 afterEach(() => {
@@ -178,6 +179,8 @@ describe('App grader shell', () => {
       API_KEY_PANEL_STRINGS.keyLabel,
     ) as HTMLInputElement
     fireEvent.change(keyInput, { target: { value: 'sk-keep-me' } })
+    // The key is used from storage, so it must be saved before starting.
+    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }))
     fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
       target: { value: 'https://example.com' },
     })
@@ -204,5 +207,35 @@ describe('App grader shell', () => {
     // No transition happened and the client-side conflict error is shown.
     expect(stageOf()).toBe('idle')
     expect(screen.getByRole('alert').textContent).toBe(URL_FORM_STRINGS.conflictError)
+  })
+
+  it('keeps the typed API key when switching URLs via a saved-address chip', () => {
+    // Seed a saved URL so the URL form shows a click-to-fill chip.
+    window.localStorage.setItem(
+      URL_HISTORY_STORAGE_KEY,
+      JSON.stringify(['https://saved.example.com']),
+    )
+    render(<App />)
+
+    // Type a key but do not save it — it lives only in the panel's state.
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.change(keyInput, { target: { value: 'sk-typed-not-saved' } })
+
+    // Click the saved-address chip to refill the URL input (re-renders App).
+    fireEvent.click(
+      screen.getByRole('button', { name: 'https://saved.example.com' }),
+    )
+
+    // The key input must still hold the typed value — switching URLs must not
+    // wipe the key the user is still entering.
+    expect(
+      (screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel) as HTMLInputElement)
+        .value,
+    ).toBe('sk-typed-not-saved')
+    expect(
+      (screen.getByLabelText(URL_FORM_STRINGS.urlLabel) as HTMLInputElement).value,
+    ).toBe('https://saved.example.com')
   })
 })

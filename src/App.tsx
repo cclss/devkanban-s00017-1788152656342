@@ -1,17 +1,19 @@
 /**
  * Landing-page grader shell.
  *
- * Assembles the whole screen: the test-tools panel on top, then the three grader
- * blocks stacked vertically — {@link UrlForm} → {@link ProgressStepper} →
- * {@link ReportView}. Every block reads one value, the {@link useStage} `Stage`
+ * Assembles the whole screen: the test-tools panel on top, then the real grader
+ * blocks stacked vertically — {@link ApiKeyPanel} → {@link UrlForm} →
+ * {@link ProgressStepper} → {@link ReportView}. The stage-driven blocks each read
+ * one value, the {@link useStage} `Stage`
  * SSoT (mirrored to `body[data-stage]`), so they can never drift apart; this
  * component only holds that one hook plus the conflict-simulation toggle and
  * wires the pieces together.
  *
  * Wiring rules (Design §state-transition rules):
  * - "Start diagnosis" runs a real `/api/analyze` stream via {@link useAnalyze}: it
- *   POSTs the URL + the API-key credentials (read from the test-tools localStorage)
- *   and drives the stepper live off the NDJSON stage events, storing the terminal
+ *   POSTs the URL + the saved API-key credentials (read from the localStorage the
+ *   {@link ApiKeyPanel} Save button persists) and drives the stepper live off the
+ *   NDJSON stage events, storing the terminal
  *   report. While the conflict simulator is set to "analysis already in progress"
  *   the start is refused with a `conflict` result so the URL form shows the
  *   client-side block inline — no request is ever sent.
@@ -22,6 +24,7 @@
  *   the stage's demo report (so the simulator still renders every outcome).
  */
 import { useCallback, useState } from 'react'
+import ApiKeyPanel from './components/ApiKeyPanel'
 import UrlForm from './components/UrlForm'
 import ProgressStepper from './components/ProgressStepper'
 import ReportView from './components/ReportView'
@@ -32,7 +35,7 @@ import { demoReportFor } from './components/testtools/demo-reports'
 import {
   API_KEY_STORAGE_KEYS,
   readStored,
-} from './components/testtools/api-key-storage'
+} from './components/api-key-storage'
 import { useAnalyze } from './state/useAnalyze'
 import type { Stage, StartResult } from './state/stage'
 import './styles/App.css'
@@ -49,7 +52,7 @@ export default function App() {
   const [conflictMode, setConflictMode] = useState<ConflictMode>('none')
 
   // "Start diagnosis": run a real analysis for `url`, pulling the API-key
-  // credentials from the test-tools localStorage (the MVP's key entry surface).
+  // credentials from localStorage (persisted by the ApiKeyPanel Save button).
   // When the conflict simulator is armed, refuse with a conflict so the URL form
   // surfaces the client-side "analysis already in progress" block and no request
   // is sent.
@@ -93,6 +96,7 @@ export default function App() {
         conflictMode={conflictMode}
         onConflictModeChange={setConflictMode}
       />
+      <ApiKeyPanel />
       <UrlForm stage={stage} onStart={handleStart} onReset={reset} />
       <ProgressStepper stage={stage} />
       <ReportView report={report} />

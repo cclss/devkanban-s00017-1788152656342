@@ -53,11 +53,8 @@ import { URL_FORM_STRINGS } from './components/UrlForm'
 import { REPORT_VIEW_STRINGS } from './components/ReportView'
 import { PARTIAL_REPORT_NOTICE } from './components/report-markdown'
 import { GRADE_LABELS } from './components/report-labels'
-import {
-  API_KEY_PANEL_STRINGS,
-  API_KEY_PRESETS,
-} from './components/testtools/ApiKeyPanel'
-import { API_KEY_STORAGE_KEYS } from './components/testtools/api-key-storage'
+import { API_KEY_PANEL_STRINGS } from './components/ApiKeyPanel'
+import { API_KEY_STORAGE_KEYS } from './components/api-key-storage'
 import { STAGE_ATTRIBUTE } from './state/useStage'
 import { resultEvent, serializeEvent, stageEvent } from './server/stage-events'
 import { partialReasonMessage } from './server/analysis-copy'
@@ -73,6 +70,17 @@ import {
 } from './core/__fixtures__/report-fixtures'
 
 const TEST_URL = 'https://landing.example.com'
+
+/** A well-formed but not-actually-valid key the user types for SC-3b. */
+const INVALID_KEY = 'sk-invalid-real-key'
+
+/** Types `key` into the API-key panel and presses Save to persist it. */
+function enterAndSaveKey(key: string): void {
+  fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+    target: { value: key },
+  })
+  fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }))
+}
 
 afterEach(() => {
   cleanup()
@@ -147,8 +155,8 @@ describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partia
   /**
    * Drives {@link App} to a `done-partial` report over a controlled stream, one
    * stage event at a time, recording every `data-stage` transition. The initial
-   * key state is applied via `setKey` (SC-3a leaves it empty; SC-3b sets the
-   * invalid preset). Returns the observed transition path for the caller to
+   * key state is applied via `setKey` (SC-3a leaves it empty; SC-3b types and
+   * saves an invalid key). Returns the observed transition path for the caller to
    * assert `ai → done-partial` never passed through `done`.
    */
   async function driveToPartial(
@@ -247,7 +255,7 @@ describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partia
     const reason = partialReasonMessage('missing-key')
     // SC-3a: the API-key field is left empty (the panel seeds it to '' on mount).
     const { observed } = await driveToPartial(reason, () => {
-      /* leave the key empty — no preset applied */
+      /* leave the key empty — nothing typed or saved */
     })
 
     // The key really is empty (SC-3a precondition).
@@ -281,24 +289,22 @@ describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partia
 
   it('SC-3b — invalid key (auth failure): same partial result + entered key never surfaced on screen/error/report/download', async () => {
     const reason = partialReasonMessage('invalid-key')
-    // SC-3b: an invalid key is entered via the invalid-key preset.
+    // SC-3b: a well-formed but invalid key is typed and saved.
     const { observed } = await driveToPartial(reason, () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.presetInvalid }),
-      )
+      enterAndSaveKey(INVALID_KEY)
     })
 
     // The invalid key was stored and travelled in the request body (auth attempt),
     // never on the URL.
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
-      API_KEY_PRESETS.invalid,
+      INVALID_KEY,
     )
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [calledUrl, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(String(calledUrl)).not.toContain(API_KEY_PRESETS.invalid)
+    expect(String(calledUrl)).not.toContain(INVALID_KEY)
     expect(JSON.parse(init.body as string)).toMatchObject({
-      apiKey: API_KEY_PRESETS.invalid,
+      apiKey: INVALID_KEY,
     })
 
     // Same partial outcome as SC-3a.
@@ -308,13 +314,13 @@ describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partia
 
     // ── Key no-leak: the entered key string appears nowhere a user can read it ─
     // Not in the rendered screen text (report, notice, form) …
-    expect(document.body.textContent ?? '').not.toContain(API_KEY_PRESETS.invalid)
+    expect(document.body.textContent ?? '').not.toContain(INVALID_KEY)
     const region = screen.getByRole('region', {
       name: REPORT_VIEW_STRINGS.regionLabel,
     })
-    expect(region.textContent ?? '').not.toContain(API_KEY_PRESETS.invalid)
+    expect(region.textContent ?? '').not.toContain(INVALID_KEY)
     // … and not in the AI-drop reason (which stands in for the AI error surface).
-    expect(reason).not.toContain(API_KEY_PRESETS.invalid)
+    expect(reason).not.toContain(INVALID_KEY)
 
     // … and not in the downloaded report file.
     fireEvent.click(
@@ -322,7 +328,7 @@ describe('SC-3 — on AI evaluation failure, show the 60-point auto-audit partia
     )
     const [blob] = downloadBlob.mock.calls[0] as [Blob, string]
     const markdown = await readBlobText(blob)
-    expect(markdown).not.toContain(API_KEY_PRESETS.invalid)
+    expect(markdown).not.toContain(INVALID_KEY)
   })
 })
 
