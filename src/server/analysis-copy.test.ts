@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AI_SKIP_REASON_PREFIX,
+  PARTIAL_REASON_PREFIX,
   aiFailureDetail,
+  isAiSkip,
   loadErrorMessage,
   loadFailureDetail,
   partialReasonMessage,
@@ -46,14 +49,32 @@ describe('partialReasonMessage', () => {
     )
   })
 
-  it('renders the missing-key / rate-limit / parse-failure variants', () => {
+  it('frames missing-key as a neutral skip, not a failure', () => {
+    // The no-key case reads as a deliberate skip ("skipped" / "entered"),
+    // distinct from the "unavailable" failure prefix the other reasons share.
     expect(partialReasonMessage('missing-key')).toBe(
-      'AI evaluation unavailable: no API key was provided, so only the automated audit results are shown.',
+      'AI evaluation skipped: no API key was entered, so only the automated audit results are shown.',
     )
+    expect(partialReasonMessage('missing-key').startsWith(AI_SKIP_REASON_PREFIX)).toBe(true)
+    expect(partialReasonMessage('missing-key')).not.toContain(PARTIAL_REASON_PREFIX)
+  })
+
+  it('keeps the failure framing for rate-limit / parse-failure', () => {
+    expect(partialReasonMessage('rate-limit').startsWith(PARTIAL_REASON_PREFIX)).toBe(true)
     expect(partialReasonMessage('rate-limit')).toContain('API usage limit was exceeded')
+    expect(partialReasonMessage('parse-failure').startsWith(PARTIAL_REASON_PREFIX)).toBe(true)
     expect(partialReasonMessage('parse-failure')).toContain(
       'AI response could not be interpreted',
     )
+  })
+})
+
+describe('isAiSkip', () => {
+  it('marks only missing-key as a deliberate skip', () => {
+    expect(isAiSkip('missing-key')).toBe(true)
+    expect(isAiSkip('invalid-key')).toBe(false)
+    expect(isAiSkip('rate-limit')).toBe(false)
+    expect(isAiSkip('parse-failure')).toBe(false)
   })
 })
 

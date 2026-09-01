@@ -192,10 +192,10 @@ describe('runAnalysis — load failure → error-load', () => {
 })
 
 describe('runAnalysis — AI failure → done-partial', () => {
-  it('routes a missing key to a 60-point partial report', async () => {
+  it('routes a missing key to a 60-point partial report framed as a neutral skip', async () => {
     const events = await collect(
       { load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } } },
-      { url: PUBLIC_URL }, // no apiKey
+      { url: PUBLIC_URL }, // no apiKey → AI axis skipped, not failed
     )
 
     expect(stages(events)).toEqual(['load', 'audit', 'ai', 'done-partial'])
@@ -205,9 +205,14 @@ describe('runAnalysis — AI failure → done-partial', () => {
     expect(report.score.grade).toBe('pending')
     expect(report.score.llmScore).toBeNull()
     expect(report.llmAxes).toBeNull()
+    // Neutral skip copy — a pass-through, not one of the error causes.
     expect(report.partialReason).toBe(
-      'AI evaluation unavailable: no API key was provided, so only the automated audit results are shown.',
+      'AI evaluation skipped: no API key was entered, so only the automated audit results are shown.',
     )
+    expect(report.partialReason).not.toContain('unavailable')
+    // Detail stays neutral and no longer points at the removed test-tools presets.
+    expect(report.partialDetail).toContain('not an error')
+    expect(report.partialDetail).not.toContain('test tools')
   })
 
   it('routes an invalid key to the confirmed key-error partial copy', async () => {
