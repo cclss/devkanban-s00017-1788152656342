@@ -124,26 +124,87 @@ describe('createClaudeAiEvaluator', () => {
     expect(create).toHaveBeenCalledTimes(2)
   })
 
-  it('maps an authentication error to invalid-key', async () => {
+  it('maps a 401 authentication error to invalid-key with the status code', async () => {
     const create: AnthropicMessageCreate = vi.fn(async () => {
       throw new Anthropic.AuthenticationError(401, { error: { message: 'bad key' } }, 'auth', new Headers())
     })
     const evaluate = createClaudeAiEvaluator(create)
-    expect(await evaluate({ url: 'x', html: '', apiKey: KEY })).toEqual({
-      ok: false,
-      reason: 'invalid-key',
-    })
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-key', statusCode: 401 })
   })
 
-  it('maps a 429 rate-limit error to rate-limit', async () => {
+  it('maps a 429 rate-limit error to rate-limit with the status code', async () => {
     const create: AnthropicMessageCreate = vi.fn(async () => {
       throw new Anthropic.RateLimitError(429, { error: { message: 'slow down' } }, 'rl', new Headers())
     })
     const evaluate = createClaudeAiEvaluator(create)
-    expect(await evaluate({ url: 'x', html: '', apiKey: KEY })).toEqual({
-      ok: false,
-      reason: 'rate-limit',
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'rate-limit', statusCode: 429 })
+  })
+
+  it('maps a 404 / no-model-access error to model-error', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.NotFoundError(404, { error: { message: 'model not found' } }, 'nf', new Headers())
     })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'model-error', statusCode: 404 })
+  })
+
+  it('maps a 400 image-unsupported error to vision-unsupported', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.BadRequestError(
+        400,
+        { error: { message: 'messages: image blocks are not supported by this model' } },
+        'this model does not support image input',
+        new Headers(),
+      )
+    })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'vision-unsupported', statusCode: 400 })
+  })
+
+  it('maps other 400 errors to request-error', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.BadRequestError(400, { error: { message: 'invalid request field' } }, 'bad request field', new Headers())
+    })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'request-error', statusCode: 400 })
+  })
+
+  it('maps a 5xx server error to provider-error', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.InternalServerError(500, { error: { message: 'internal error' } }, 'internal error', new Headers())
+    })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'provider-error', statusCode: 500 })
+  })
+
+  it('maps a connection/timeout error (no status) to ai-network', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.APIConnectionTimeoutError({ message: 'Request timed out' })
+    })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'ai-network' })
+    if (!result.ok) expect(result.statusCode).toBeUndefined()
+  })
+
+  it('carries a masked provider summary that never contains the key', async () => {
+    const create: AnthropicMessageCreate = vi.fn(async () => {
+      throw new Anthropic.AuthenticationError(401, {}, `auth rejected key ${KEY}`, new Headers())
+    })
+    const evaluate = createClaudeAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.summary).toBeDefined()
+      expect(result.summary).not.toContain(KEY)
+      expect(result.summary).toContain('401')
+    }
   })
 
   it('returns missing-key without calling the model when no key is supplied', async () => {

@@ -230,7 +230,9 @@ describe('runAnalysis — AI failure → done-partial', () => {
     )
   })
 
-  it('degrades to partial when the evaluator throws', async () => {
+  it('degrades to partial with an ai-network reason when the evaluator throws', async () => {
+    // A thrown (rather than returned) failure has an unknown cause, so runAi
+    // degrades it to ai-network — never a blanket invalid-key.
     const throwingEvaluator: AiEvaluator = async () => {
       throw new Error('boom')
     }
@@ -240,7 +242,8 @@ describe('runAnalysis — AI failure → done-partial', () => {
     })
     const report = resultOf(events) as AnalysisReport
     expect(report.outcome).toBe('done-partial')
-    expect(report.partialReason).toContain('an API key error occurred')
+    expect(report.partialReason).toContain('the AI service could not be reached')
+    expect(report.partialReason).not.toContain('an API key error occurred')
   })
 
   it('attaches the actionable detail for the AI-failure reason', async () => {

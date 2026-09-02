@@ -67,6 +67,24 @@ describe('partialReasonMessage', () => {
       'AI response could not be interpreted',
     )
   })
+
+  it('frames each new taxonomy reason as a distinct failure line', () => {
+    const distinct: Array<[AiFailureReason, string]> = [
+      ['model-error', 'the selected model could not be used'],
+      ['vision-unsupported', 'does not support image input'],
+      ['request-error', 'rejected as malformed'],
+      ['ai-network', 'could not be reached'],
+      ['provider-error', 'server error'],
+    ]
+    const seen = new Set<string>()
+    for (const [reason, fragment] of distinct) {
+      const message = partialReasonMessage(reason)
+      expect(message.startsWith(PARTIAL_REASON_PREFIX)).toBe(true)
+      expect(message).toContain(fragment)
+      expect(seen.has(message)).toBe(false)
+      seen.add(message)
+    }
+  })
 })
 
 describe('isAiSkip', () => {
@@ -113,6 +131,11 @@ describe('aiFailureDetail', () => {
   const REASONS: AiFailureReason[] = [
     'missing-key',
     'invalid-key',
+    'model-error',
+    'vision-unsupported',
+    'request-error',
+    'ai-network',
+    'provider-error',
     'rate-limit',
     'parse-failure',
   ]
@@ -130,5 +153,21 @@ describe('aiFailureDetail', () => {
     expect(aiFailureDetail('invalid-key')).toContain('rejected')
     expect(aiFailureDetail('rate-limit')).toContain('limit')
     expect(aiFailureDetail('parse-failure')).toContain('JSON')
+  })
+
+  it('gives each new taxonomy reason a distinct, actionable "what to check next" detail', () => {
+    // model-error → model permission / different model; vision-unsupported →
+    // vision-capable model; request-error → retry / other model; ai-network and
+    // provider-error → retry later.
+    expect(aiFailureDetail('model-error')).toContain('model')
+    expect(aiFailureDetail('model-error')).toContain('permission')
+    expect(aiFailureDetail('vision-unsupported')).toContain('image')
+    expect(aiFailureDetail('vision-unsupported')).toContain('vision-capable model')
+    expect(aiFailureDetail('request-error')).toContain('again')
+    expect(aiFailureDetail('ai-network')).toContain('try again')
+    expect(aiFailureDetail('provider-error')).toContain('provider side')
+
+    const details = REASONS.map((r) => aiFailureDetail(r))
+    expect(new Set(details).size).toBe(REASONS.length)
   })
 })

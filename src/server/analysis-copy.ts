@@ -11,8 +11,10 @@
  * - **Partial copy** — the AI axis drops and the report completes on the
  *   60-point auto-audit scale; `partialReason` explains why. Two tones live here,
  *   sharing the ` only the automated audit results are shown.` suffix:
- *   - a genuine **failure** (`invalid-key` / `rate-limit` / `parse-failure`)
- *     uses the `AI evaluation unavailable: ` prefix — something went wrong;
+ *   - a genuine **failure** (`invalid-key` / `model-error` / `vision-unsupported`
+ *     / `request-error` / `ai-network` / `provider-error` / `rate-limit` /
+ *     `parse-failure`) uses the `AI evaluation unavailable: ` prefix — something
+ *     went wrong;
  *   - a deliberate **skip** (`missing-key`) uses the `AI evaluation skipped: `
  *     prefix — no key was entered, so the AI axis is intentionally bypassed and
  *     the run passes through neutrally. This is not an error state.
@@ -45,9 +47,22 @@ export type LoadFailureReason =
 export type AiFailureReason =
   /** No API key was entered — a deliberate skip, not a failure. */
   | 'missing-key'
-  /** The key was rejected (auth error) or the model call otherwise failed. */
+  /** The key was rejected by the provider (401 / 403 auth failure). */
   | 'invalid-key'
-  /** The provider quota / rate limit was exceeded. */
+  /**
+   * The selected model could not be used: it does not exist, or the key has no
+   * access to it (404 / model-not-found / no-access).
+   */
+  | 'model-error'
+  /** The selected model rejected image input (a 400 vision-unsupported error). */
+  | 'vision-unsupported'
+  /** The request was malformed and rejected by the provider (other 400). */
+  | 'request-error'
+  /** The provider could not be reached: a timeout or a network-level failure. */
+  | 'ai-network'
+  /** The provider returned a server-side error (5xx). */
+  | 'provider-error'
+  /** The provider quota / rate limit was exceeded (429). */
   | 'rate-limit'
   /** The model replied, but the JSON could not be parsed (even after a retry). */
   | 'parse-failure'
@@ -107,7 +122,7 @@ export function loadFailureDetail(reason: LoadFailureReason): string {
   return LOAD_FAILURE_DETAIL[reason]
 }
 
-/** Prefix for a genuine AI *failure* (`invalid-key` / `rate-limit` / `parse-failure`). */
+/** Prefix for a genuine AI *failure* (everything except the no-key `missing-key` skip). */
 export const PARTIAL_REASON_PREFIX = 'AI evaluation unavailable: '
 
 /**
@@ -132,6 +147,11 @@ export function isAiSkip(reason: AiFailureReason): boolean {
 const PARTIAL_CAUSE: Readonly<Record<AiFailureReason, string>> = {
   'missing-key': 'no API key was entered, so',
   'invalid-key': 'an API key error occurred, so',
+  'model-error': 'the selected model could not be used, so',
+  'vision-unsupported': 'the selected model does not support image input, so',
+  'request-error': 'the evaluation request was rejected as malformed, so',
+  'ai-network': 'the AI service could not be reached, so',
+  'provider-error': 'the AI provider returned a server error, so',
   'rate-limit': 'the API usage limit was exceeded, so',
   'parse-failure': 'the AI response could not be interpreted, so',
 } as const
@@ -162,7 +182,17 @@ const AI_FAILURE_DETAIL: Readonly<Record<AiFailureReason, string>> = {
   'missing-key':
     'This is not an error: no API key was entered, so the AI evaluation was skipped and the report was completed on the 60-point automated audit scale. To include the AI score, enter an API key in the API key panel, save it, then run the diagnosis again.',
   'invalid-key':
-    'The API key you entered was rejected by the provider. Check that the key value is correct and that you have permission to use the selected model, then run the diagnosis again.',
+    'The API key you entered was rejected by the provider (an authentication error). Check that the key value is correct and still active, then run the diagnosis again.',
+  'model-error':
+    'The selected model could not be used — it may not exist, or your API key may not have permission to use it. Check the model id, confirm your plan has access to it or pick a different model, then run the diagnosis again.',
+  'vision-unsupported':
+    'The selected model does not support image input, so the screenshots could not be evaluated. Pick a vision-capable model, or run the diagnosis again to score on the page text alone.',
+  'request-error':
+    'The provider rejected the evaluation request as malformed (a 400 error). This is usually temporary — run the diagnosis again, and try a different model if it keeps happening.',
+  'ai-network':
+    'The AI provider could not be reached — the request timed out or the network failed. Check your connection, then try again in a moment.',
+  'provider-error':
+    'The AI provider returned a server error (a 5xx status). This is an issue on the provider side — try again in a moment, or retry later if it persists.',
   'rate-limit':
     "The provider's API usage limit (request count / tokens) was exceeded. Try again in a moment, or check your usage limits in the provider console.",
   'parse-failure':

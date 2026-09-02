@@ -62,8 +62,21 @@ export interface AiSuccess {
 /** A failed AI evaluation, routing the report to `done-partial`. */
 export interface AiFailure {
   ok: false
-  /** Typed cause, mapped to Korean `partialReason` copy by the pipeline. */
+  /** Typed cause, mapped to the English `partialReason` copy by the pipeline. */
   reason: AiFailureReason
+  /**
+   * The provider HTTP status code, when the failure came from an HTTP response
+   * (e.g. 401, 404, 429, 500). Absent for transport errors with no response and
+   * for the no-key skip. Surfaced in failure details / server logs by later
+   * grains — never carries the API key.
+   */
+  statusCode?: number
+  /**
+   * A short, **key-masked** summary of the provider error (status + message),
+   * for the "view failure details" disclosure and server logs. It is passed
+   * through {@link maskApiKey}, so the raw API key can never appear here.
+   */
+  summary?: string
 }
 
 /** Discriminated outcome of the AI stage. */
@@ -88,6 +101,121 @@ export function sumAxisScores(axes: readonly LlmAxis[]): number {
 }
 
 /**
+ * Redacts API-key material from a string before it is logged or returned.
+ *
+ * Two layers, so no key can slip into a failure summary or a log line
+ * (spec "no API key logging"):
+ *  1. If the exact `apiKey` is known, every occurrence is replaced verbatim.
+ *  2. As a backstop for keys the caller did not pass (e.g. a provider that
+ *     echoed a differently-formatted token), anything shaped like an API key
+ *     (`sk-…`, `pk-…`, `rk-…`, or a long `Bearer …` token) is redacted too.
+ */
+export function maskApiKey(text: string, apiKey?: string): string {
+  let masked = text
+  if (typeof apiKey === 'string' && apiKey.trim() !== '') {
+    masked = masked.split(apiKey.trim()).join('[redacted]')
+  }
+  return masked
+    .replace(/\b(?:sk|pk|rk)-[A-Za-z0-9_-]{6,}/gi, '[redacted]')
+    .replace(/\bBearer\s+[A-Za-z0-9._-]{8,}/gi, 'Bearer [redacted]')
+}
+
+/**
+ * Normalised view of a thrown provider error, extracted by each evaluator from
+ * its SDK exception. Both the Anthropic and OpenAI SDK errors expose a numeric
+ * `status` and a `message`, so this shape is provider-agnostic.
+ */
+export interface ProviderErrorInfo {
+  /** The provider HTTP status code, when the error carried an HTTP response. */
+  status?: number
+  /** The provider error message, when present. */
+  message?: string
+}
+
+/** Whether a 400 message indicates the model rejected image / vision input. */
+function indicatesVisionUnsupported(message: string): boolean {
+  return /image|vision|multimodal/i.test(message)
+}
+
+/** Whether a message indicates the model is missing or the key has no access to it. */
+function indicatesModelProblem(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    /model/.test(m) &&
+    /(not found|does not exist|not exist|unknown|invalid|no access|not have access|access to)/.test(
+      m,
+    )
+  )
+}
+
+/**
+ * Classifies a provider error into a typed {@link AiFailureReason} by status
+ * code and message — the taxonomy the whole grain turns on:
+ * 401/403 → `invalid-key`, 404 / model-not-found / no-access → `model-error`,
+ * 400 image-unsupported → `vision-unsupported`, other 400 → `request-error`,
+ * 5xx → `provider-error`, 429 → `rate-limit`, and a timeout / networked / status-less
+ * error → `ai-network`.
+ */
+export function classifyAiError(info: ProviderErrorInfo): AiFailureReason {
+  const { status } = info
+  const message = info.message ?? ''
+  if (status === 429) return 'rate-limit'
+  if (status === 400 && indicatesVisionUnsupported(message)) return 'vision-unsupported'
+  // A model-specific message wins over a bare auth status (a 403 "no access to
+  // model X" is a model problem, not a rejected key).
+  if (status !== 401 && indicatesModelProblem(message)) return 'model-error'
+  if (status === 404) return 'model-error'
+  if (status === 401 || status === 403) return 'invalid-key'
+  if (status === 400) return 'request-error'
+  if (typeof status === 'number' && status >= 500) return 'provider-error'
+  // No HTTP status (timeout / connection reset / unknown transport failure).
+  return 'ai-network'
+}
+
+/** Truncation cap for the masked error summary carried on an {@link AiFailure}. */
+const SUMMARY_MAX_LENGTH = 300
+
+/**
+ * Builds the failure fields of an {@link AiFailure} from a provider error: the
+ * typed `reason`, the provider `statusCode`, and a short **key-masked** `summary`
+ * (status + message). Shared by both evaluators' `mapError`. The `apiKey` is used
+ * only to redact — it is never stored or returned.
+ */
+export function classifyProviderFailure(
+  info: ProviderErrorInfo,
+  apiKey?: string,
+): Omit<AiFailure, 'ok'> {
+  const reason = classifyAiError(info)
+  const parts: string[] = []
+  if (typeof info.status === 'number') parts.push(`HTTP ${info.status}`)
+  if (info.message) parts.push(info.message)
+  const raw = parts.join(': ')
+  const summary = maskApiKey(
+    raw.length > SUMMARY_MAX_LENGTH ? `${raw.slice(0, SUMMARY_MAX_LENGTH)}…` : raw,
+    apiKey,
+  )
+  const failure: Omit<AiFailure, 'ok'> = { reason }
+  if (typeof info.status === 'number') failure.statusCode = info.status
+  if (summary !== '') failure.summary = summary
+  return failure
+}
+
+/**
+ * Extracts a {@link ProviderErrorInfo} from a thrown SDK error by duck-typing
+ * its `status` / `message`. Works for both the Anthropic and OpenAI `APIError`
+ * shapes (a numeric `status` and a string `message`); a plain thrown value
+ * yields an empty info, which {@link classifyAiError} maps to `ai-network`.
+ */
+export function toProviderErrorInfo(error: unknown): ProviderErrorInfo {
+  if (typeof error !== 'object' || error === null) return {}
+  const e = error as { status?: unknown; message?: unknown }
+  return {
+    status: typeof e.status === 'number' ? e.status : undefined,
+    message: typeof e.message === 'string' ? e.message : undefined,
+  }
+}
+
+/**
  * Baseline key-gate stub: no key → `missing-key`; a key present → `invalid-key`.
  * It never calls a model. **This is not wired into the pipeline** — `/api/analyze`
  * uses `DEFAULT_AI_EVALUATOR = createRoutingAiEvaluator()`, the real
@@ -102,10 +230,14 @@ export const defaultAiEvaluator: AiEvaluator = async ({ apiKey }) => {
 }
 
 /**
- * Runs the AI stage, delegating to `evaluate`. Any thrown error is contained and
- * converted to an `invalid-key` failure so a misbehaving evaluator degrades to a
- * partial result instead of tearing down the whole analysis (errors are
- * information, but the AI step is non-fatal by the partial-result principle).
+ * Runs the AI stage, delegating to `evaluate`. The evaluators already classify
+ * their own provider failures (returning a typed reason plus a masked summary),
+ * so a returned failure is passed through **verbatim** — its reason and metadata
+ * are preserved, never flattened to `invalid-key`. The `catch` is only a safety
+ * net for an evaluator that *throws* instead of returning; since the true cause
+ * is unknown there, it degrades to `ai-network` (a transport-level failure), so
+ * the AI step stays non-fatal by the partial-result principle without
+ * mislabelling the cause as a rejected key.
  */
 export async function runAi(
   input: AiEvaluatorInput,
@@ -120,7 +252,7 @@ export async function runAi(
     }
     return result
   } catch {
-    return { ok: false, reason: 'invalid-key' }
+    return { ok: false, reason: 'ai-network' }
   }
 }
 

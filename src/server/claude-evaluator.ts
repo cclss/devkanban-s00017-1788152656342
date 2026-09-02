@@ -6,9 +6,13 @@
  * the landing page on the three rubric axes — Visual / Copy / CTA — and to reply
  * with a strict JSON envelope. The reply is parsed and validated into
  * {@link LlmAxis}[]; a malformed reply is retried exactly once before the stage
- * degrades to a typed `parse-failure`. Provider failures map to typed reasons so
- * the pipeline can turn any of them into a `done-partial` report: no key →
- * `missing-key`, an auth rejection → `invalid-key`, a 429 → `rate-limit`.
+ * degrades to a typed `parse-failure`. Provider failures are classified by
+ * status/message into distinct typed reasons (401/403 → `invalid-key`,
+ * 404 / no-model-access → `model-error`, 400 image-unsupported →
+ * `vision-unsupported`, other 400 → `request-error`, 5xx → `provider-error`,
+ * 429 → `rate-limit`, timeout/network → `ai-network`) so the pipeline can turn
+ * any of them into a `done-partial` report with an accurate cause; no key →
+ * `missing-key`.
  *
  * Key hygiene (spec "no API key logging"): the API key is only ever handed to the
  * injected message-create function to construct the client. It is never written
@@ -29,13 +33,15 @@ import {
   type LlmAxisId,
   type Screenshot,
 } from '../core/report'
-import type { AiFailureReason } from './analysis-copy'
 import {
+  classifyProviderFailure,
   hasApiKey,
   sumAxisScores,
+  toProviderErrorInfo,
   type AiEvaluation,
   type AiEvaluator,
   type AiEvaluatorInput,
+  type AiFailure,
 } from './ai-stage'
 
 /** The Claude model this evaluator scores with, unless the input overrides it. */
@@ -252,19 +258,18 @@ export function parseRubricAxes(text: string): LlmAxis[] | null {
   return axes
 }
 
-/** Maps a thrown provider error to a typed AI-failure reason (never the key). */
-function mapError(error: unknown): AiFailureReason {
-  if (
-    error instanceof Anthropic.RateLimitError ||
-    (typeof error === 'object' &&
-      error !== null &&
-      (error as { status?: unknown }).status === 429)
-  ) {
-    return 'rate-limit'
-  }
-  // Auth rejections and any other provider/model failure degrade to invalid-key
-  // (the partial-result principle: the AI step is non-fatal).
-  return 'invalid-key'
+/**
+ * Maps a thrown Claude error to the failure fields of an {@link AiFailure} —
+ * a typed reason, the provider status code, and a **key-masked** summary. The
+ * Anthropic SDK's `APIError` exposes a numeric `status` and a `message`, which
+ * {@link toProviderErrorInfo} reads and {@link classifyProviderFailure}
+ * classifies (401/403 → invalid-key, 404 / no-model-access → model-error,
+ * 400 image-unsupported → vision-unsupported, other 400 → request-error,
+ * 5xx → provider-error, 429 → rate-limit, timeout/network → ai-network).
+ * `apiKey` is used only to redact the summary — it is never stored or returned.
+ */
+function mapError(error: unknown, apiKey: string): Omit<AiFailure, 'ok'> {
+  return classifyProviderFailure(toProviderErrorInfo(error), apiKey)
 }
 
 /**
@@ -291,7 +296,7 @@ export function createClaudeAiEvaluator(
       }
       return { ok: false, reason: 'parse-failure' }
     } catch (error) {
-      return { ok: false, reason: mapError(error) }
+      return { ok: false, ...mapError(error, apiKey) }
     }
   }
 }

@@ -84,26 +84,87 @@ describe('createOpenAiAiEvaluator', () => {
     expect(create).toHaveBeenCalledTimes(2)
   })
 
-  it('maps an authentication error to invalid-key', async () => {
+  it('maps a 401 authentication error to invalid-key with the status code', async () => {
     const create: OpenAiChatCreate = vi.fn(async () => {
       throw new OpenAI.AuthenticationError(401, { error: { message: 'bad key' } }, 'auth', new Headers())
     })
     const evaluate = createOpenAiAiEvaluator(create)
-    expect(await evaluate({ url: 'x', html: '', apiKey: KEY })).toEqual({
-      ok: false,
-      reason: 'invalid-key',
-    })
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-key', statusCode: 401 })
   })
 
-  it('maps a 429 rate-limit error to rate-limit', async () => {
+  it('maps a 429 rate-limit error to rate-limit with the status code', async () => {
     const create: OpenAiChatCreate = vi.fn(async () => {
       throw new OpenAI.RateLimitError(429, { error: { message: 'slow down' } }, 'rl', new Headers())
     })
     const evaluate = createOpenAiAiEvaluator(create)
-    expect(await evaluate({ url: 'x', html: '', apiKey: KEY })).toEqual({
-      ok: false,
-      reason: 'rate-limit',
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'rate-limit', statusCode: 429 })
+  })
+
+  it('maps a 404 / no-model-access error to model-error', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.NotFoundError(404, { error: { message: 'The model `gpt-x` does not exist' } }, 'nf', new Headers())
     })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'model-error', statusCode: 404 })
+  })
+
+  it('maps a 400 image-unsupported error to vision-unsupported', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.BadRequestError(
+        400,
+        { error: { message: 'This model does not support image input.' } },
+        'unsupported image',
+        new Headers(),
+      )
+    })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'vision-unsupported', statusCode: 400 })
+  })
+
+  it('maps other 400 errors to request-error', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.BadRequestError(400, { error: { message: 'invalid request payload' } }, 'bad payload', new Headers())
+    })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'request-error', statusCode: 400 })
+  })
+
+  it('maps a 5xx server error to provider-error', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.InternalServerError(503, { error: { message: 'service unavailable' } }, 'unavailable', new Headers())
+    })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'provider-error', statusCode: 503 })
+  })
+
+  it('maps a connection/timeout error (no status) to ai-network', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.APIConnectionTimeoutError({ message: 'Request timed out' })
+    })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result).toMatchObject({ ok: false, reason: 'ai-network' })
+    if (!result.ok) expect(result.statusCode).toBeUndefined()
+  })
+
+  it('carries a masked provider summary that never contains the key', async () => {
+    const create: OpenAiChatCreate = vi.fn(async () => {
+      throw new OpenAI.AuthenticationError(401, {}, `auth rejected key ${KEY}`, new Headers())
+    })
+    const evaluate = createOpenAiAiEvaluator(create)
+    const result = await evaluate({ url: 'x', html: '', apiKey: KEY })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.summary).toBeDefined()
+      expect(result.summary).not.toContain(KEY)
+      expect(result.summary).toContain('401')
+    }
   })
 
   it('returns missing-key without calling the model when no key is supplied', async () => {

@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  classifyAiError,
+  classifyProviderFailure,
   defaultAiEvaluator,
   hasApiKey,
+  maskApiKey,
   runAi,
   sumAxisScores,
+  toProviderErrorInfo,
   type AiEvaluator,
 } from './ai-stage'
+import type { AiFailureReason } from './analysis-copy'
 import type { LlmAxis } from '../core/report'
 
 /**
@@ -67,13 +72,108 @@ describe('runAi', () => {
     })
   })
 
-  it('contains a thrown error as an invalid-key failure', async () => {
+  it('contains a truly-unknown thrown error as an ai-network failure (not invalid-key)', async () => {
+    // The evaluators classify their own provider failures and *return* them, so
+    // a throw here means an unexpected transport-level fault of unknown cause —
+    // it degrades to ai-network, never a blanket invalid-key.
     const evaluate = vi.fn<AiEvaluator>(async () => {
       throw new Error('boom')
     })
     expect(await runAi({ url: 'x', html: '' }, evaluate)).toEqual({
       ok: false,
-      reason: 'invalid-key',
+      reason: 'ai-network',
     })
+  })
+
+  it('preserves an evaluator-classified failure verbatim (reason + status + summary)', async () => {
+    const evaluate: AiEvaluator = async () => ({
+      ok: false,
+      reason: 'model-error',
+      statusCode: 404,
+      summary: 'HTTP 404: model not found',
+    })
+    expect(await runAi({ url: 'x', html: '' }, evaluate)).toEqual({
+      ok: false,
+      reason: 'model-error',
+      statusCode: 404,
+      summary: 'HTTP 404: model not found',
+    })
+  })
+})
+
+describe('maskApiKey', () => {
+  it('redacts the exact known key everywhere it appears', () => {
+    const key = 'sk-ant-secret-value-123'
+    expect(maskApiKey(`auth failed for ${key} twice: ${key}`, key)).toBe(
+      'auth failed for [redacted] twice: [redacted]',
+    )
+    expect(maskApiKey(`auth failed for ${key}`, key)).not.toContain(key)
+  })
+
+  it('redacts key-shaped tokens even when the exact key is not supplied', () => {
+    expect(maskApiKey('rejected: sk-openai-abcdef123456')).toBe('rejected: [redacted]')
+    expect(maskApiKey('header Bearer abcdef1234567890')).toBe('header Bearer [redacted]')
+  })
+
+  it('leaves ordinary text untouched', () => {
+    expect(maskApiKey('HTTP 404: model not found', 'sk-x-unused')).toBe(
+      'HTTP 404: model not found',
+    )
+  })
+})
+
+describe('toProviderErrorInfo', () => {
+  it('extracts numeric status and string message from an SDK-shaped error', () => {
+    expect(toProviderErrorInfo({ status: 404, message: 'no such model' })).toEqual({
+      status: 404,
+      message: 'no such model',
+    })
+  })
+
+  it('yields an empty info for a status-less or non-object throw', () => {
+    expect(toProviderErrorInfo(new Error('boom'))).toEqual({ status: undefined, message: 'boom' })
+    expect(toProviderErrorInfo('nope')).toEqual({})
+    expect(toProviderErrorInfo(null)).toEqual({})
+  })
+})
+
+describe('classifyAiError', () => {
+  const cases: Array<[string, { status?: number; message?: string }, AiFailureReason]> = [
+    ['401 auth', { status: 401, message: 'invalid api key' }, 'invalid-key'],
+    ['403 auth', { status: 403, message: 'forbidden' }, 'invalid-key'],
+    ['403 no model access', { status: 403, message: 'You do not have access to model gpt-x' }, 'model-error'],
+    ['404 model', { status: 404, message: 'model not found' }, 'model-error'],
+    ['400 model not found', { status: 400, message: 'The model `foo` does not exist' }, 'model-error'],
+    ['400 image unsupported', { status: 400, message: 'This model does not support image input' }, 'vision-unsupported'],
+    ['400 other', { status: 400, message: 'invalid request: bad field' }, 'request-error'],
+    ['429', { status: 429, message: 'slow down' }, 'rate-limit'],
+    ['500', { status: 500, message: 'internal error' }, 'provider-error'],
+    ['503', { status: 503, message: 'unavailable' }, 'provider-error'],
+    ['no status (timeout/network)', { message: 'Connection timed out' }, 'ai-network'],
+    ['empty', {}, 'ai-network'],
+  ]
+
+  it.each(cases)('maps %s to its distinct reason', (_label, info, expected) => {
+    expect(classifyAiError(info)).toBe(expected)
+  })
+})
+
+describe('classifyProviderFailure', () => {
+  it('captures reason, statusCode, and a masked summary', () => {
+    const failure = classifyProviderFailure(
+      { status: 401, message: 'auth failed for sk-secret-abcdef123456' },
+      'sk-secret-abcdef123456',
+    )
+    expect(failure.reason).toBe('invalid-key')
+    expect(failure.statusCode).toBe(401)
+    expect(failure.summary).toBe('HTTP 401: auth failed for [redacted]')
+    expect(JSON.stringify(failure)).not.toContain('sk-secret-abcdef123456')
+  })
+
+  it('omits statusCode for a status-less transport error', () => {
+    const failure = classifyProviderFailure({ message: 'Connection error' })
+    expect(failure.reason).toBe('ai-network')
+    expect(failure.statusCode).toBeUndefined()
+    expect(failure.summary).toBe('Connection error')
   })
 })
