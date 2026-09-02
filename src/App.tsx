@@ -36,6 +36,7 @@ import {
   API_KEY_STORAGE_KEYS,
   readStored,
 } from './components/api-key-storage'
+import { isClaudeCodeToken } from './core/claude-code-token'
 import { useAnalyze } from './state/useAnalyze'
 import type { Stage, StartResult } from './state/stage'
 import './styles/App.css'
@@ -58,12 +59,19 @@ export default function App() {
   // is sent.
   const handleStart = useCallback(
     (url: string): StartResult => {
+      const apiKey = storedCredential(API_KEY_STORAGE_KEYS.apiKey)
+      // Pre-block a Claude Code CLI token (`sk-ant-oat…`) before any request:
+      // the Messages API only ever answers it with a 401, so short-circuit and
+      // surface the dedicated guidance instead of spending a round trip.
+      if (apiKey !== undefined && isClaudeCodeToken(apiKey)) {
+        return { stage, started: false, conflict: false, claudeCodeToken: true }
+      }
       if (conflictMode === 'in-progress') {
         return { stage, started: false, conflict: true }
       }
       return start({
         url,
-        apiKey: storedCredential(API_KEY_STORAGE_KEYS.apiKey),
+        apiKey,
         provider: storedCredential(API_KEY_STORAGE_KEYS.provider),
         model: storedCredential(API_KEY_STORAGE_KEYS.model),
       })

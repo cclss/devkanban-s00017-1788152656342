@@ -19,6 +19,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import UrlForm, { URL_FORM_STRINGS, isHttpUrl } from './UrlForm'
 import { MAX_SAVED_URLS, readUrlHistory } from './url-history'
 import { CONTROL_HELP } from './control-help'
+import { CLAUDE_CODE_TOKEN_GUIDANCE } from '../core/claude-code-token'
 import type { StartResult } from '../state/stage'
 
 afterEach(() => {
@@ -114,6 +115,29 @@ describe('UrlForm — conflict', () => {
     expect(onStart).toHaveBeenCalledWith('https://example.com')
     expect(screen.getByRole('alert').textContent).toBe(URL_FORM_STRINGS.conflictError)
     expect(URL_FORM_STRINGS.conflictError).toContain('An analysis is already in progress')
+  })
+})
+
+describe('UrlForm — Claude Code token pre-block', () => {
+  it('surfaces the credential guidance when the start machine reports a claudeCodeToken block', () => {
+    const blocked: StartResult = {
+      stage: 'idle',
+      started: false,
+      conflict: false,
+      claudeCodeToken: true,
+    }
+    const onStart = vi.fn<(url: string) => StartResult>(() => blocked)
+    render(<UrlForm stage="idle" onStart={onStart} onReset={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
+    })
+    fireEvent.click(getStartButton())
+
+    expect(onStart).toHaveBeenCalledWith('https://example.com')
+    expect(screen.getByRole('alert').textContent).toBe(CLAUDE_CODE_TOKEN_GUIDANCE)
+    // A blocked start records nothing to the saved-address history.
+    expect(readUrlHistory()).toEqual([])
   })
 })
 

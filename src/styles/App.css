@@ -223,6 +223,17 @@
   color: var(--color-status-danger);
 }
 
+/* Inline credential guidance (Claude Code `sk-ant-oat…` pre-block): a calm
+ * danger-colored, multi-line message under the key field. Same danger token as
+ * the field error but with base line-height for its longer, wrapping copy.
+ * Reuses existing tokens only — no new design values. */
+.field-guidance {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-size-xs);
+  line-height: var(--line-height-base);
+  color: var(--color-status-danger);
+}
+
 /* ── API key panel ──────────────────────────────────────────────
  * Real product block: provider/model selects + masked key input + explicit
  * Save. Stacked fields on the shared card surface. Colors/spacing/typography

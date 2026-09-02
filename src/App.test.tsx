@@ -22,6 +22,7 @@ import { API_KEY_STORAGE_KEYS } from './components/api-key-storage'
 import { API_KEY_PANEL_STRINGS } from './components/ApiKeyPanel'
 import { URL_HISTORY_STORAGE_KEY } from './components/url-history'
 import { TEST_TOOLS_PANEL_STRINGS } from './components/testtools/TestToolsPanel'
+import { CLAUDE_CODE_TOKEN_GUIDANCE } from './core/claude-code-token'
 
 afterEach(() => {
   cleanup()
@@ -195,6 +196,32 @@ describe('App grader shell', () => {
     expect(window.localStorage.getItem(API_KEY_STORAGE_KEYS.apiKey)).toBe(
       'sk-keep-me',
     )
+  })
+
+  it('pre-blocks a saved Claude Code (sk-ant-oat) token: Start sends no fetch and shows guidance', () => {
+    const fetchMock = vi.fn(
+      (_url: string, _init: RequestInit) => new Promise<Response>(() => {}),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    // Enter a Claude Code CLI token and Save it so the start gate reads it back.
+    fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
+      target: { value: 'sk-ant-oat01-abc123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: API_KEY_PANEL_STRINGS.save }))
+    fireEvent.change(screen.getByLabelText(URL_FORM_STRINGS.urlLabel), {
+      target: { value: 'https://example.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: URL_FORM_STRINGS.start }))
+
+    // No request was ever made and the flow never left idle.
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(stageOf()).toBe('idle')
+    // The dedicated guidance is surfaced from the start flow (URL form alert)
+    // *and* inline on the API-key panel (two occurrences of the same copy).
+    const guidance = screen.getAllByText(CLAUDE_CODE_TOKEN_GUIDANCE)
+    expect(guidance.length).toBeGreaterThanOrEqual(2)
   })
 
   it('conflict simulation blocks a start client-side with an inline error', () => {

@@ -108,6 +108,13 @@ export interface StartResult {
    * The caller surfaces this as an inline field error and sends no request.
    */
   conflict: boolean
+  /**
+   * True when the request was pre-blocked because the saved credential is a
+   * Claude Code CLI token (`sk-ant-oat…`) that the Messages API rejects. The
+   * caller surfaces the dedicated guidance and sends no request. Absent on the
+   * normal path (only the App start gate ever sets it).
+   */
+  claudeCodeToken?: boolean
 }
 
 /**

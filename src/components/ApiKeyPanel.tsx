@@ -26,6 +26,10 @@ import {
 } from './api-key-storage'
 import InfoTooltip from './InfoTooltip'
 import { CONTROL_HELP } from './control-help'
+import {
+  CLAUDE_CODE_TOKEN_GUIDANCE,
+  isClaudeCodeToken,
+} from '../core/claude-code-token'
 
 /** Provider options. Anthropic (Claude) and OpenAI (GPT) are both supported. */
 export const API_KEY_PROVIDERS = [
@@ -135,7 +139,12 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
   const modelId = useId()
   const keyId = useId()
   const hintId = useId()
+  const guidanceId = useId()
   const statusId = useId()
+
+  // A Claude Code CLI token (`sk-ant-oat…`) is not a Messages API key; flag it
+  // the moment it is typed so the user is redirected before ever pressing Start.
+  const isCodeToken = isClaudeCodeToken(apiKey)
 
   // Persist whatever was seeded (including the defaults) once on mount, so the
   // three keys always exist after the panel has been shown. This is the only
@@ -241,7 +250,8 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
             value={apiKey}
             placeholder={API_KEY_PANEL_STRINGS.keyPlaceholder}
             autoComplete="off"
-            aria-describedby={hintId}
+            aria-describedby={isCodeToken ? `${hintId} ${guidanceId}` : hintId}
+            aria-invalid={isCodeToken ? true : undefined}
             onChange={(event) => handleKey(event.target.value)}
           />
           <button
@@ -261,6 +271,13 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
         <p id={hintId} className="api-key__hint">
           {API_KEY_PANEL_STRINGS.keyHint}
         </p>
+        {/* Claude Code CLI token caught inline: redirect the user to a real
+            Messages API key before they attempt a run that would 401. */}
+        {isCodeToken ? (
+          <p id={guidanceId} className="field-guidance" role="alert">
+            {CLAUDE_CODE_TOKEN_GUIDANCE}
+          </p>
+        ) : null}
       </div>
 
       <div className="api-key__actions">

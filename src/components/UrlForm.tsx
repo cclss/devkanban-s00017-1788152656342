@@ -45,6 +45,7 @@ import {
 import { addUrlToHistory, readUrlHistory, writeUrlHistory } from './url-history'
 import InfoTooltip from './InfoTooltip'
 import { CONTROL_HELP } from './control-help'
+import { CLAUDE_CODE_TOKEN_GUIDANCE } from '../core/claude-code-token'
 
 /**
  * English, user-facing copy for the URL form. Co-located as confirmed domain
@@ -123,6 +124,12 @@ export default function UrlForm({ stage, onStart, onReset }: UrlFormProps) {
     // we surface inline and send nothing — the client blocks, not the server.
     const trimmed = url.trim()
     const result = onStart(trimmed)
+    if (result.claudeCodeToken) {
+      // Saved credential is a Claude Code CLI token — the start gate blocked it
+      // before any request; surface the dedicated guidance here too.
+      setError(CLAUDE_CODE_TOKEN_GUIDANCE)
+      return
+    }
     if (result.conflict) {
       setError(URL_FORM_STRINGS.conflictError)
       return

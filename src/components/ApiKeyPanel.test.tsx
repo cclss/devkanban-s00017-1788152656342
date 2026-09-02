@@ -10,6 +10,7 @@ import ApiKeyPanel, {
 } from './ApiKeyPanel'
 import { API_KEY_STORAGE_KEYS } from './api-key-storage'
 import { CONTROL_HELP } from './control-help'
+import { CLAUDE_CODE_TOKEN_GUIDANCE } from '../core/claude-code-token'
 
 afterEach(() => {
   cleanup()
@@ -147,6 +148,33 @@ describe('ApiKeyPanel', () => {
     )
     expect(keyInput.type).toBe('password')
     expect(keyInput.value).toBe('sk-secret')
+  })
+
+  it('shows dedicated guidance the moment a Claude Code (sk-ant-oat) token is typed', () => {
+    render(<ApiKeyPanel />)
+    expect(screen.queryByText(CLAUDE_CODE_TOKEN_GUIDANCE)).toBeNull()
+
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.change(keyInput, { target: { value: 'sk-ant-oat01-abc123' } })
+
+    // The guidance appears without a Save, and the field is marked invalid.
+    expect(screen.getByText(CLAUDE_CODE_TOKEN_GUIDANCE)).toBeDefined()
+    expect(keyInput.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('clears the Claude Code guidance once a non-oat key is entered', () => {
+    render(<ApiKeyPanel />)
+    const keyInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.keyLabel,
+    ) as HTMLInputElement
+    fireEvent.change(keyInput, { target: { value: 'sk-ant-oat01-abc123' } })
+    expect(screen.getByText(CLAUDE_CODE_TOKEN_GUIDANCE)).toBeDefined()
+
+    fireEvent.change(keyInput, { target: { value: 'sk-ant-api03-real' } })
+    expect(screen.queryByText(CLAUDE_CODE_TOKEN_GUIDANCE)).toBeNull()
+    expect(keyInput.getAttribute('aria-invalid')).toBeNull()
   })
 
   it('shows the persistence hint describing the Save behavior', () => {
