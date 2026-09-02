@@ -29,6 +29,17 @@ describe('CONTROL_HELP copy', () => {
     }
   })
 
+  it('names both credential types and each issuance path in the API-key help', () => {
+    const body = CONTROL_HELP.apiKey.body
+    // The usable Anthropic API key and its issuance path.
+    expect(body).toContain('sk-ant-api…')
+    expect(body).toContain('console.anthropic.com → API Keys')
+    // The rejected Claude Code-only token and its issuance path.
+    expect(body).toContain('sk-ant-oat…')
+    expect(body).toContain('claude setup-token')
+    expect(body).toContain('Claude Code-only token')
+  })
+
   it('covers each distinct grader control called out in the grain', () => {
     const expected: readonly ControlHelpKey[] = [
       'urlInput',

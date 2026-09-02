@@ -89,7 +89,7 @@ export const CONTROL_HELP: Record<ControlHelpKey, HelpEntry> = {
   },
   apiKey: {
     title: 'API key input',
-    body: 'Enter the API key used to request AI evaluation. The entered key is saved automatically in this browser only and is never stored or logged on the server.',
+    body: 'Enter the Anthropic API key used to request AI evaluation. Use a key issued at console.anthropic.com → API Keys — it starts with sk-ant-api…. A Claude Code-only token from claude setup-token (it starts with sk-ant-oat…) is a different credential that the Messages API rejects, so this tool cannot use it. The entered key is kept only in this browser and is never stored or logged on the server.',
   },
   revealKey: {
     title: 'Show / hide key',
