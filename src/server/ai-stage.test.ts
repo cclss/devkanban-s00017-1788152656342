@@ -85,6 +85,28 @@ describe('runAi', () => {
     })
   })
 
+  it('preserves the evaluator screenshots-omitted flag on success', async () => {
+    const evaluate: AiEvaluator = async () => ({
+      ok: true,
+      axes: AXES,
+      llmScore: 40,
+      screenshotsOmitted: true,
+    })
+    expect(await runAi({ url: 'x', html: '' }, evaluate)).toEqual({
+      ok: true,
+      axes: AXES,
+      llmScore: 40,
+      screenshotsOmitted: true,
+    })
+  })
+
+  it('omits the screenshots-omitted flag when the evaluator did not set it', async () => {
+    const evaluate: AiEvaluator = async () => ({ ok: true, axes: AXES, llmScore: 40 })
+    const result = await runAi({ url: 'x', html: '' }, evaluate)
+    expect(result).toEqual({ ok: true, axes: AXES, llmScore: 40 })
+    if (result.ok) expect(result.screenshotsOmitted).toBeUndefined()
+  })
+
   it('preserves an evaluator-classified failure verbatim (reason + status + summary)', async () => {
     const evaluate: AiEvaluator = async () => ({
       ok: false,

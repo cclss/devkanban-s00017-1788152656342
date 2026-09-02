@@ -57,6 +57,14 @@ export interface AiSuccess {
   axes: LlmAxis[]
   /** Combined AI points earned (0–{@link LLM_MAX_SCORE}). */
   llmScore: number
+  /**
+   * Set when the selected model was judged non-vision-capable, so the evaluator
+   * deliberately skipped the screenshots and scored on the page text alone. The
+   * pipeline threads this onto the `done` report (as `screenshotsOmitted`) so the
+   * UI / markdown can show an "evaluated without screenshots" notice. Absent /
+   * `false` on a normal evaluation that used any available screenshots.
+   */
+  screenshotsOmitted?: boolean
 }
 
 /** A failed AI evaluation, routing the report to `done-partial`. */
@@ -247,8 +255,15 @@ export async function runAi(
     const result = await evaluate(input)
     if (result.ok) {
       // Normalise the reported score against the axes, ignoring an inflated
-      // caller-supplied total.
-      return { ok: true, axes: result.axes, llmScore: sumAxisScores(result.axes) }
+      // caller-supplied total. Preserve the evaluator's screenshots-omitted flag
+      // so the "evaluated without screenshots" notice survives to the report.
+      const success: AiSuccess = {
+        ok: true,
+        axes: result.axes,
+        llmScore: sumAxisScores(result.axes),
+      }
+      if (result.screenshotsOmitted) success.screenshotsOmitted = true
+      return success
     }
     return result
   } catch {

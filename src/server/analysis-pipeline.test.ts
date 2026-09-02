@@ -328,6 +328,36 @@ describe('runAnalysis — AI failure → done-partial', () => {
   })
 })
 
+describe('runAnalysis — screenshots omitted (non-vision model)', () => {
+  it('threads the AI screenshots-omitted flag onto the done report', async () => {
+    // A success from a non-vision model: the evaluator scored text-only and
+    // flagged the omission; the pipeline must carry it onto the done report.
+    const textOnly: AiEvaluator = async () => ({
+      ok: true,
+      axes: AXES,
+      llmScore: 30,
+      screenshotsOmitted: true,
+    })
+    const events = await collect({
+      load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: textOnly,
+    })
+    const report = resultOf(events) as AnalysisReport
+    expect(report.outcome).toBe('done')
+    expect(report.screenshotsOmitted).toBe(true)
+  })
+
+  it('leaves the flag absent on a normal (screenshots-used) done report', async () => {
+    const events = await collect({
+      load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: successEvaluator,
+    })
+    const report = resultOf(events) as AnalysisReport
+    expect(report.outcome).toBe('done')
+    expect(report.screenshotsOmitted).toBeUndefined()
+  })
+})
+
 describe('runAnalysis — full 22-check registry through the pipeline', () => {
   it('carries the complete registry on the happy-path 100-point report', async () => {
     const events = await collect({

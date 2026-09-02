@@ -115,7 +115,7 @@ function buildDoneReport(
   screenshots: Screenshot[],
 ): AnalysisReport {
   const total = audit.auditScore + ai.llmScore
-  return {
+  const report: AnalysisReport = {
     outcome: 'done',
     url,
     analyzedAt,
@@ -132,6 +132,11 @@ function buildDoneReport(
     llmAxes: ai.axes,
     screenshots,
   }
+  // The AI step evaluated on text alone because the model can't take images:
+  // mark the report so the UI / markdown show the "evaluated without
+  // screenshots" notice.
+  if (ai.screenshotsOmitted) report.screenshotsOmitted = true
+  return report
 }
 
 /** Builds the `done-partial` report from the audit alone when the AI step failed. */

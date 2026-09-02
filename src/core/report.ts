@@ -204,6 +204,15 @@ export interface AnalysisReport {
    * export so an operator can diagnose the real cause.
    */
   partialSummary?: string
+  /**
+   * `true` when the AI evaluation deliberately skipped the captured screenshots
+   * because the selected model was judged non-vision-capable, and scored on the
+   * page text alone. Present only on a `done` report (the AI step still
+   * succeeded); the UI and markdown show an "evaluated without screenshots"
+   * notice so the reader knows the AI score is text-only. Absent when the
+   * screenshots were sent (or there were none).
+   */
+  screenshotsOmitted?: boolean
 }
 
 /**

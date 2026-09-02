@@ -184,7 +184,7 @@ describe('createOpenAiAiEvaluator', () => {
     const screenshots: Screenshot[] = [
       { viewport: 'desktop', dataUrl: 'data:image/png;base64,AAAABBBB', width: 1280, height: 720 },
     ]
-    await evaluate({ url: 'https://x.test', html: '<h1>hi</h1>', apiKey: KEY, screenshots })
+    const result = await evaluate({ url: 'https://x.test', html: '<h1>hi</h1>', apiKey: KEY, screenshots })
 
     const [passedKey, params] = create.mock.calls[0]
     expect(passedKey).toBe(KEY)
@@ -195,6 +195,36 @@ describe('createOpenAiAiEvaluator', () => {
     const content = userMessage?.content as OpenAI.Chat.Completions.ChatCompletionContentPart[]
     expect(content.some((p) => p.type === 'image_url')).toBe(true)
     expect(content.some((p) => p.type === 'text' && p.text.includes('<h1>hi</h1>'))).toBe(true)
+    // A vision-capable model used the screenshots, so nothing was omitted.
+    if (result.ok) expect(result.screenshotsOmitted).toBeFalsy()
+  })
+
+  it('skips image parts for a non-vision model and scores text-only, marking screenshots omitted', async () => {
+    const create = vi.fn<OpenAiChatCreate>(async () => reply(VALID_JSON))
+    const evaluate = createOpenAiAiEvaluator(create)
+    const screenshots: Screenshot[] = [
+      { viewport: 'desktop', dataUrl: 'data:image/png;base64,AAAABBBB', width: 1280, height: 720 },
+    ]
+    const result = await evaluate({
+      url: 'https://x.test',
+      html: '<h1>hi</h1>',
+      apiKey: KEY,
+      model: 'gpt-3.5-turbo', // text-only GPT-3.5
+      screenshots,
+    })
+
+    const [, params] = create.mock.calls[0]
+    const userMessage = params.messages.find((m) => m.role === 'user')
+    const content = userMessage?.content as OpenAI.Chat.Completions.ChatCompletionContentPart[]
+    // No image part was sent, but the page text still is — a text-only evaluation.
+    expect(content.some((p) => p.type === 'image_url')).toBe(false)
+    expect(content.some((p) => p.type === 'text' && p.text.includes('<h1>hi</h1>'))).toBe(true)
+    // It still scored the three axes, and the success flags the omission.
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.axes).toHaveLength(3)
+      expect(result.screenshotsOmitted).toBe(true)
+    }
   })
 
   it('uses the default GPT model when the input omits one, and honours an override', async () => {

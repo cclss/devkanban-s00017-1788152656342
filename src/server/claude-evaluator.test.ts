@@ -224,7 +224,7 @@ describe('createClaudeAiEvaluator', () => {
     const screenshots: Screenshot[] = [
       { viewport: 'desktop', dataUrl: 'data:image/png;base64,AAAABBBB', width: 1280, height: 720 },
     ]
-    await evaluate({ url: 'https://x.test', html: '<h1>hi</h1>', apiKey: KEY, screenshots })
+    const result = await evaluate({ url: 'https://x.test', html: '<h1>hi</h1>', apiKey: KEY, screenshots })
 
     const [passedKey, params] = create.mock.calls[0]
     expect(passedKey).toBe(KEY)
@@ -233,6 +233,35 @@ describe('createClaudeAiEvaluator', () => {
     const content = params.messages[0].content as Anthropic.ContentBlockParam[]
     expect(content.some((b) => b.type === 'image')).toBe(true)
     expect(content.some((b) => b.type === 'text' && b.text.includes('<h1>hi</h1>'))).toBe(true)
+    // A vision-capable model used the screenshots, so nothing was omitted.
+    if (result.ok) expect(result.screenshotsOmitted).toBeFalsy()
+  })
+
+  it('skips image blocks for a non-vision model and scores text-only, marking screenshots omitted', async () => {
+    const create = vi.fn<AnthropicMessageCreate>(async () => reply(VALID_JSON))
+    const evaluate = createClaudeAiEvaluator(create)
+    const screenshots: Screenshot[] = [
+      { viewport: 'desktop', dataUrl: 'data:image/png;base64,AAAABBBB', width: 1280, height: 720 },
+    ]
+    const result = await evaluate({
+      url: 'https://x.test',
+      html: '<h1>hi</h1>',
+      apiKey: KEY,
+      model: 'claude-2.1', // pre-3 Claude: text-only
+      screenshots,
+    })
+
+    const [, params] = create.mock.calls[0]
+    const content = params.messages[0].content as Anthropic.ContentBlockParam[]
+    // No image block was sent, but the page text still is — a text-only evaluation.
+    expect(content.some((b) => b.type === 'image')).toBe(false)
+    expect(content.some((b) => b.type === 'text' && b.text.includes('<h1>hi</h1>'))).toBe(true)
+    // It still scored the three axes, and the success flags the omission.
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.axes).toHaveLength(3)
+      expect(result.screenshotsOmitted).toBe(true)
+    }
   })
 
   it('keeps the key out of every thrown error and returned value', async () => {

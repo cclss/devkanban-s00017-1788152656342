@@ -39,8 +39,10 @@ import {
   type AiEvaluator,
   type AiEvaluatorInput,
   type AiFailure,
+  type AiSuccess,
 } from './ai-stage'
 import { RUBRIC_SYSTEM_PROMPT, parseRubricAxes } from './claude-evaluator'
+import { modelSupportsVision } from './vision-support'
 
 /** The GPT model this evaluator scores with, unless the input overrides it. */
 export const DEFAULT_OPENAI_MODEL = 'gpt-4o'
@@ -75,19 +77,27 @@ function screenshotPart(
   return { type: 'image_url', image_url: { url: shot.dataUrl } }
 }
 
-/** Assembles the user message content: screenshots first, then the page text. */
+/**
+ * Assembles the user message content: screenshots first, then the page text.
+ * When `includeScreenshots` is `false` (the selected model is non-vision-capable)
+ * the image parts are skipped entirely and the rubric is evaluated on the page
+ * text alone.
+ */
 function buildUserContent(
   input: AiEvaluatorInput,
+  includeScreenshots: boolean,
 ): OpenAI.Chat.Completions.ChatCompletionContentPart[] {
   const parts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
-  for (const shot of input.screenshots ?? []) {
-    const part = screenshotPart(shot)
-    if (part) {
-      parts.push({
-        type: 'text',
-        text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
-      })
-      parts.push(part)
+  if (includeScreenshots) {
+    for (const shot of input.screenshots ?? []) {
+      const part = screenshotPart(shot)
+      if (part) {
+        parts.push({
+          type: 'text',
+          text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
+        })
+        parts.push(part)
+      }
     }
   }
   parts.push({
@@ -104,14 +114,19 @@ function buildUserContent(
   return parts
 }
 
+/** Resolves the effective model id for this input (the override, else the default). */
+function resolveModel(input: AiEvaluatorInput): string {
+  return typeof input.model === 'string' && input.model.trim() !== ''
+    ? input.model
+    : DEFAULT_OPENAI_MODEL
+}
+
 /** Builds the non-streaming chat-completions request for this input. */
 function buildRequest(
   input: AiEvaluatorInput,
+  model: string,
+  includeScreenshots: boolean,
 ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
-  const model =
-    typeof input.model === 'string' && input.model.trim() !== ''
-      ? input.model
-      : DEFAULT_OPENAI_MODEL
   return {
     model,
     max_tokens: MAX_TOKENS,
@@ -120,7 +135,7 @@ function buildRequest(
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: RUBRIC_SYSTEM_PROMPT },
-      { role: 'user', content: buildUserContent(input) },
+      { role: 'user', content: buildUserContent(input, includeScreenshots) },
     ],
   }
 }
@@ -160,14 +175,26 @@ export function createOpenAiAiEvaluator(
       return { ok: false, reason: 'missing-key' }
     }
     const apiKey = input.apiKey as string
-    const request = buildRequest(input)
+    const model = resolveModel(input)
+    // Proactively skip screenshots when the model can't accept images; the
+    // reactive `vision-unsupported` classification remains as the fallback.
+    const supportsVision = modelSupportsVision(model)
+    const screenshotsOmitted =
+      !supportsVision && (input.screenshots?.length ?? 0) > 0
+    const request = buildRequest(input, model, supportsVision)
     try {
       // One initial attempt, then exactly one retry on a parse failure only.
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const completion = await createChat(apiKey, request)
         const axes: LlmAxis[] | null = parseRubricAxes(replyText(completion))
         if (axes) {
-          return { ok: true, axes, llmScore: sumAxisScores(axes) }
+          const success: AiSuccess = {
+            ok: true,
+            axes,
+            llmScore: sumAxisScores(axes),
+          }
+          if (screenshotsOmitted) success.screenshotsOmitted = true
+          return success
         }
       }
       return { ok: false, reason: 'parse-failure' }

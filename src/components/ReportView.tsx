@@ -40,7 +40,11 @@ import {
   GRADE_LABELS,
   sortChecksFailFirst,
 } from './report-labels'
-import { buildReportFilename, buildReportMarkdown } from './report-markdown'
+import {
+  buildReportFilename,
+  buildReportMarkdown,
+  SCREENSHOTS_OMITTED_NOTICE,
+} from './report-markdown'
 import InfoTooltip from './InfoTooltip'
 import { CONTROL_HELP } from './control-help'
 
@@ -60,6 +64,12 @@ export const REPORT_VIEW_STRINGS = {
   categoryScoresHeading: 'Category scores',
   /** Section heading for the AI-rubric axis score cards. */
   aiScoresHeading: 'AI evaluation',
+  /**
+   * Notice shown in the AI section when the rubric was scored on text alone
+   * because the selected model can't accept images (shared with the markdown
+   * exporter as the single source of the string).
+   */
+  screenshotsOmittedNotice: SCREENSHOTS_OMITTED_NOTICE,
   /** Section heading for the screenshot tabs. */
   screenshotsHeading: 'Screenshots',
   /** Section heading for the per-category checklist. */
@@ -247,6 +257,11 @@ function AnalysisReportView({
       {/* ── AI axis score cards (or partial notice) ───────────── */}
       <div className="report-section">
         <h3 className="report-section__title">{REPORT_VIEW_STRINGS.aiScoresHeading}</h3>
+        {report.screenshotsOmitted ? (
+          <p className="report-section__note" role="status">
+            {REPORT_VIEW_STRINGS.screenshotsOmittedNotice}
+          </p>
+        ) : null}
         {report.llmAxes ? (
           <div className="report-score-grid">
             {report.llmAxes.map((axis) => (

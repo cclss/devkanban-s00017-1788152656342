@@ -117,6 +117,26 @@ describe('ReportView — done-partial (60-point scale)', () => {
   })
 })
 
+describe('ReportView — evaluated without screenshots', () => {
+  it('shows the "Evaluated without screenshots" notice in the AI section when omitted', () => {
+    render(<ReportView report={{ ...doneReport, screenshotsOmitted: true }} />)
+    expect(
+      screen.getByText(REPORT_VIEW_STRINGS.screenshotsOmittedNotice),
+    ).toBeDefined()
+    // The AI axis cards still render — a text-only evaluation still scored.
+    for (const axis of ['Visual', 'Copy', 'CTA']) {
+      expect(screen.getAllByText(axis).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('omits the notice on a normal report that used the screenshots', () => {
+    render(<ReportView report={doneReport} />)
+    expect(
+      screen.queryByText(REPORT_VIEW_STRINGS.screenshotsOmittedNotice),
+    ).toBeNull()
+  })
+})
+
 describe('ReportView — error-load', () => {
   it('hides the report and shows only the English error card with status code', () => {
     render(<ReportView report={errorLoadReport} />)

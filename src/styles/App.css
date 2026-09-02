@@ -1202,6 +1202,14 @@
   color: var(--color-text-secondary);
 }
 
+/* Section note (e.g. "Evaluated without screenshots"): a muted line under a
+ * report-section heading, above that section's content. */
+.report-section__note {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-size-xs);
+  color: var(--color-text-secondary);
+}
+
 /* ── Score cards (categories + AI axes) ────────────────────── */
 .report-score-grid {
   display: grid;

@@ -41,6 +41,15 @@ export const PARTIAL_REPORT_NOTICE =
   'This is a partial report written on the 60-point auto-audit scale because AI evaluation was skipped.'
 
 /**
+ * English notice shown when the AI rubric was scored on the page text alone
+ * because the selected model does not accept image input, so the captured
+ * screenshots were not sent. Single source of the string, shared by the report
+ * view and this markdown exporter so both surfaces read identically. Confirmed
+ * English domain copy, not a design token.
+ */
+export const SCREENSHOTS_OMITTED_NOTICE = 'Evaluated without screenshots'
+
+/**
  * Reduces a URL to a safe host segment for the download name. Falls back to
  * `unknown-host` when the URL cannot be parsed (should not happen for a
  * completed report, but keeps the name well-formed regardless).
@@ -176,6 +185,11 @@ export function buildReportMarkdown(report: AnalysisReport): string {
   }
 
   lines.push('## AI evaluation')
+  // The AI score is text-only because the model can't accept images.
+  if (report.screenshotsOmitted) {
+    lines.push(`_${SCREENSHOTS_OMITTED_NOTICE}_`)
+    lines.push('')
+  }
   if (report.llmAxes && report.llmAxes.length > 0) {
     for (const axis of report.llmAxes) {
       lines.push(...renderAxis(axis))

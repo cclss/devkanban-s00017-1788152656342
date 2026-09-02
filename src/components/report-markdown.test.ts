@@ -14,6 +14,7 @@ import {
 } from '../core/__fixtures__/report-fixtures'
 import {
   PARTIAL_REPORT_NOTICE,
+  SCREENSHOTS_OMITTED_NOTICE,
   buildReportFilename,
   buildReportMarkdown,
 } from './report-markdown'
@@ -120,6 +121,25 @@ describe('buildReportMarkdown — partial-result detail', () => {
   it('omits the detail line entirely when no partialDetail is present', () => {
     const plain = buildReportMarkdown(donePartialReport)
     expect(plain).not.toContain('Partial result detail')
+  })
+})
+
+describe('buildReportMarkdown — evaluated without screenshots', () => {
+  it('renders the notice in the AI evaluation section when screenshots were omitted', () => {
+    const md = buildReportMarkdown({ ...doneReport, screenshotsOmitted: true })
+    expect(md).toContain(SCREENSHOTS_OMITTED_NOTICE)
+    // The notice sits inside the AI evaluation section, before the axes.
+    const aiHeading = md.indexOf('## AI evaluation')
+    const noticeIdx = md.indexOf(SCREENSHOTS_OMITTED_NOTICE)
+    const firstAxis = md.indexOf('### Visual')
+    expect(noticeIdx).toBeGreaterThan(aiHeading)
+    expect(noticeIdx).toBeLessThan(firstAxis)
+    // The axes are still scored (a text-only evaluation still succeeded).
+    expect(md).toContain('### Visual (15/16)')
+  })
+
+  it('omits the notice on a normal report that used the screenshots', () => {
+    expect(buildReportMarkdown(doneReport)).not.toContain(SCREENSHOTS_OMITTED_NOTICE)
   })
 })
 

@@ -42,7 +42,9 @@ import {
   type AiEvaluator,
   type AiEvaluatorInput,
   type AiFailure,
+  type AiSuccess,
 } from './ai-stage'
+import { modelSupportsVision } from './vision-support'
 
 /** The Claude model this evaluator scores with, unless the input overrides it. */
 export const DEFAULT_AI_MODEL = 'claude-sonnet-5'
@@ -132,17 +134,27 @@ function screenshotBlock(
   }
 }
 
-/** Assembles the user message: screenshots first, then the page-text prompt. */
-function buildUserContent(input: AiEvaluatorInput): Anthropic.ContentBlockParam[] {
+/**
+ * Assembles the user message: screenshots first, then the page-text prompt. When
+ * `includeScreenshots` is `false` (the selected model is non-vision-capable) the
+ * image blocks are skipped entirely and the rubric is evaluated on the page text
+ * alone.
+ */
+function buildUserContent(
+  input: AiEvaluatorInput,
+  includeScreenshots: boolean,
+): Anthropic.ContentBlockParam[] {
   const blocks: Anthropic.ContentBlockParam[] = []
-  for (const shot of input.screenshots ?? []) {
-    const block = screenshotBlock(shot)
-    if (block) {
-      blocks.push({
-        type: 'text',
-        text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
-      })
-      blocks.push(block)
+  if (includeScreenshots) {
+    for (const shot of input.screenshots ?? []) {
+      const block = screenshotBlock(shot)
+      if (block) {
+        blocks.push({
+          type: 'text',
+          text: `The following is a screenshot of the ${shot.viewport === 'mobile' ? 'mobile' : 'desktop'} view.`,
+        })
+        blocks.push(block)
+      }
     }
   }
   blocks.push({
@@ -159,19 +171,26 @@ function buildUserContent(input: AiEvaluatorInput): Anthropic.ContentBlockParam[
   return blocks
 }
 
+/** Resolves the effective model id for this input (the override, else the default). */
+function resolveModel(input: AiEvaluatorInput): string {
+  return typeof input.model === 'string' && input.model.trim() !== ''
+    ? input.model
+    : DEFAULT_AI_MODEL
+}
+
 /** Builds the non-streaming Messages request for this input. */
 function buildRequest(
   input: AiEvaluatorInput,
+  model: string,
+  includeScreenshots: boolean,
 ): Anthropic.MessageCreateParamsNonStreaming {
-  const model =
-    typeof input.model === 'string' && input.model.trim() !== ''
-      ? input.model
-      : DEFAULT_AI_MODEL
   return {
     model,
     max_tokens: MAX_TOKENS,
     system: RUBRIC_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildUserContent(input) }],
+    messages: [
+      { role: 'user', content: buildUserContent(input, includeScreenshots) },
+    ],
   }
 }
 
@@ -284,14 +303,26 @@ export function createClaudeAiEvaluator(
       return { ok: false, reason: 'missing-key' }
     }
     const apiKey = input.apiKey as string
-    const request = buildRequest(input)
+    const model = resolveModel(input)
+    // Proactively skip screenshots when the model can't accept images; the
+    // reactive `vision-unsupported` classification remains as the fallback.
+    const supportsVision = modelSupportsVision(model)
+    const screenshotsOmitted =
+      !supportsVision && (input.screenshots?.length ?? 0) > 0
+    const request = buildRequest(input, model, supportsVision)
     try {
       // One initial attempt, then exactly one retry on a parse failure only.
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const message = await createMessage(apiKey, request)
         const axes = parseRubricAxes(replyText(message))
         if (axes) {
-          return { ok: true, axes, llmScore: sumAxisScores(axes) }
+          const success: AiSuccess = {
+            ok: true,
+            axes,
+            llmScore: sumAxisScores(axes),
+          }
+          if (screenshotsOmitted) success.screenshotsOmitted = true
+          return success
         }
       }
       return { ok: false, reason: 'parse-failure' }
