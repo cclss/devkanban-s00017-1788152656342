@@ -167,6 +167,7 @@ describe('classifyAiError', () => {
     ['404 model', { status: 404, message: 'model not found' }, 'model-error'],
     ['400 model not found', { status: 400, message: 'The model `foo` does not exist' }, 'model-error'],
     ['400 image unsupported', { status: 400, message: 'This model does not support image input' }, 'vision-unsupported'],
+    ['400 workspace required', { status: 400, message: 'anthropic-workspace-id is required when authenticating with an identity-linked API key; send the id of the workspace this request acts in.' }, 'workspace-required'],
     ['400 other', { status: 400, message: 'invalid request: bad field' }, 'request-error'],
     ['429', { status: 429, message: 'slow down' }, 'rate-limit'],
     ['500', { status: 500, message: 'internal error' }, 'provider-error'],

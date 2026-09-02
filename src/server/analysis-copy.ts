@@ -12,8 +12,8 @@
  *   60-point auto-audit scale; `partialReason` explains why. Two tones live here,
  *   sharing the ` only the automated audit results are shown.` suffix:
  *   - a genuine **failure** (`invalid-key` / `model-error` / `vision-unsupported`
- *     / `request-error` / `ai-network` / `provider-error` / `rate-limit` /
- *     `parse-failure`) uses the `AI evaluation unavailable: ` prefix — something
+ *     / `workspace-required` / `request-error` / `ai-network` / `provider-error` /
+ *     `rate-limit` / `parse-failure`) uses the `AI evaluation unavailable: ` prefix — something
  *     went wrong;
  *   - a deliberate **skip** (`missing-key`) uses the `AI evaluation skipped: `
  *     prefix — no key was entered, so the AI axis is intentionally bypassed and
@@ -56,6 +56,12 @@ export type AiFailureReason =
   | 'model-error'
   /** The selected model rejected image input (a 400 vision-unsupported error). */
   | 'vision-unsupported'
+  /**
+   * The key is identity-linked (scoped to an organization workspace) but no
+   * workspace id was sent, so the provider rejected the request with a 400
+   * naming the required `anthropic-workspace-id` header.
+   */
+  | 'workspace-required'
   /** The request was malformed and rejected by the provider (other 400). */
   | 'request-error'
   /** The provider could not be reached: a timeout or a network-level failure. */
@@ -149,6 +155,7 @@ const PARTIAL_CAUSE: Readonly<Record<AiFailureReason, string>> = {
   'invalid-key': 'an API key error occurred, so',
   'model-error': 'the selected model could not be used, so',
   'vision-unsupported': 'the selected model does not support image input, so',
+  'workspace-required': 'the API key is linked to a workspace but no workspace ID was provided, so',
   'request-error': 'the evaluation request was rejected as malformed, so',
   'ai-network': 'the AI service could not be reached, so',
   'provider-error': 'the AI provider returned a server error, so',
@@ -187,6 +194,8 @@ const AI_FAILURE_DETAIL: Readonly<Record<AiFailureReason, string>> = {
     'The selected model could not be used — it may not exist, or your API key may not have permission to use it. Check the model id, confirm your plan has access to it or pick a different model, then run the diagnosis again.',
   'vision-unsupported':
     'The selected model does not support image input, so the screenshots could not be evaluated. Pick a vision-capable model, or run the diagnosis again to score on the page text alone.',
+  'workspace-required':
+    'This key is linked to an organization workspace (an identity-linked key), so every request must name the workspace it acts in. Find its Workspace ID at Console → Settings → Workspaces, enter it in the Workspace ID field, save it, then run the diagnosis again.',
   'request-error':
     'The provider rejected the evaluation request as malformed (a 400 error). This is usually temporary — run the diagnosis again, and try a different model if it keeps happening.',
   'ai-network':

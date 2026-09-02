@@ -151,6 +151,15 @@ function indicatesVisionUnsupported(message: string): boolean {
   return /image|vision|multimodal/i.test(message)
 }
 
+/**
+ * Whether a 400 message indicates an identity-linked key that needs its
+ * workspace named — the provider echoes the required `anthropic-workspace-id`
+ * header by name in the error.
+ */
+function indicatesWorkspaceRequired(message: string): boolean {
+  return /anthropic-workspace-id/i.test(message)
+}
+
 /** Whether a message indicates the model is missing or the key has no access to it. */
 function indicatesModelProblem(message: string): boolean {
   const m = message.toLowerCase()
@@ -166,7 +175,8 @@ function indicatesModelProblem(message: string): boolean {
  * Classifies a provider error into a typed {@link AiFailureReason} by status
  * code and message — the taxonomy the whole grain turns on:
  * 401/403 → `invalid-key`, 404 / model-not-found / no-access → `model-error`,
- * 400 image-unsupported → `vision-unsupported`, other 400 → `request-error`,
+ * 400 image-unsupported → `vision-unsupported`, 400 naming
+ * `anthropic-workspace-id` → `workspace-required`, other 400 → `request-error`,
  * 5xx → `provider-error`, 429 → `rate-limit`, and a timeout / networked / status-less
  * error → `ai-network`.
  */
@@ -180,6 +190,9 @@ export function classifyAiError(info: ProviderErrorInfo): AiFailureReason {
   if (status !== 401 && indicatesModelProblem(message)) return 'model-error'
   if (status === 404) return 'model-error'
   if (status === 401 || status === 403) return 'invalid-key'
+  // An identity-linked key that omitted its workspace id is a distinct, fixable
+  // 400 (add the workspace id) — surface it ahead of the generic request-error.
+  if (status === 400 && indicatesWorkspaceRequired(message)) return 'workspace-required'
   if (status === 400) return 'request-error'
   if (typeof status === 'number' && status >= 500) return 'provider-error'
   // No HTTP status (timeout / connection reset / unknown transport failure).

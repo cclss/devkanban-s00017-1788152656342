@@ -72,6 +72,7 @@ describe('partialReasonMessage', () => {
     const distinct: Array<[AiFailureReason, string]> = [
       ['model-error', 'the selected model could not be used'],
       ['vision-unsupported', 'does not support image input'],
+      ['workspace-required', 'no workspace ID was provided'],
       ['request-error', 'rejected as malformed'],
       ['ai-network', 'could not be reached'],
       ['provider-error', 'server error'],
@@ -133,6 +134,7 @@ describe('aiFailureDetail', () => {
     'invalid-key',
     'model-error',
     'vision-unsupported',
+    'workspace-required',
     'request-error',
     'ai-network',
     'provider-error',
@@ -179,5 +181,15 @@ describe('aiFailureDetail', () => {
 
     const details = REASONS.map((r) => aiFailureDetail(r))
     expect(new Set(details).size).toBe(REASONS.length)
+  })
+
+  it('guides the workspace-required key to find and enter its Workspace ID', () => {
+    // The identity-linked / workspace-scoped 400 gets its own actionable detail:
+    // name the credential type and point at the Console → Settings → Workspaces
+    // lookup path so the user can supply the missing workspace id.
+    const detail = aiFailureDetail('workspace-required')
+    expect(detail).toContain('identity-linked key')
+    expect(detail).toContain('Workspace ID')
+    expect(detail).toContain('Console → Settings → Workspaces')
   })
 })
