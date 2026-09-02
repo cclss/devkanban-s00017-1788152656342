@@ -115,6 +115,23 @@ describe('postAnalyze — happy path', () => {
       model: 'claude-sonnet-5',
     })
   })
+
+  it('sends the workspace id in the body and never in the URL', async () => {
+    const fetchImpl = fetchStreaming(wire)
+    const { handlers } = recorder()
+    await postAnalyze(
+      { url: 'https://example.com', apiKey: 'sk-secret-123', workspaceId: 'wrkspc_private_9' },
+      handlers,
+      fetchImpl,
+    )
+
+    const [calledUrl, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
+    // Like the key: the workspace id must not ride the URL.
+    expect(String(calledUrl)).toBe(ANALYZE_ENDPOINT)
+    expect(String(calledUrl)).not.toContain('wrkspc_private_9')
+    const body = JSON.parse((init as RequestInit).body as string)
+    expect(body).toMatchObject({ workspaceId: 'wrkspc_private_9' })
+  })
 })
 
 describe('postAnalyze — terminal outcomes', () => {

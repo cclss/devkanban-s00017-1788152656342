@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildAnthropicClientOptions,
   createClaudeAiEvaluator,
   parseRubricAxes,
   RUBRIC_SYSTEM_PROMPT,
@@ -282,10 +283,46 @@ describe('createClaudeAiEvaluator', () => {
     }
   })
 
+  it('threads a present workspace id to the message-create boundary', async () => {
+    const create = vi.fn<AnthropicMessageCreate>(async () => reply(VALID_JSON))
+    const evaluate = createClaudeAiEvaluator(create)
+    await evaluate({
+      url: 'https://x.test',
+      html: '<h1>hi</h1>',
+      apiKey: KEY,
+      workspaceId: 'wrkspc_abc123',
+    })
+    // The workspace id rides as the third, discrete argument — not inside params.
+    expect(create.mock.calls[0][2]).toBe('wrkspc_abc123')
+    expect(JSON.stringify(create.mock.calls[0][1])).not.toContain('wrkspc_abc123')
+  })
+
+  it('passes no workspace id to the boundary when none is provided', async () => {
+    const create = vi.fn<AnthropicMessageCreate>(async () => reply(VALID_JSON))
+    const evaluate = createClaudeAiEvaluator(create)
+    await evaluate({ url: 'https://x.test', html: '<h1>hi</h1>', apiKey: KEY })
+    expect(create.mock.calls[0][2]).toBeUndefined()
+  })
+
   it('embeds the three axis ceilings in the English rubric prompt', () => {
     expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 16 points')
     expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 14 points')
     expect(RUBRIC_SYSTEM_PROMPT).toContain('out of 10 points')
     expect(RUBRIC_SYSTEM_PROMPT).toContain('JSON')
+  })
+})
+
+describe('buildAnthropicClientOptions', () => {
+  it('attaches the anthropic-workspace-id header when a workspace id is present', () => {
+    expect(buildAnthropicClientOptions(KEY, 'wrkspc_abc123')).toEqual({
+      apiKey: KEY,
+      defaultHeaders: { 'anthropic-workspace-id': 'wrkspc_abc123' },
+    })
+  })
+
+  it('sends no workspace header when the id is absent or blank', () => {
+    expect(buildAnthropicClientOptions(KEY)).toEqual({ apiKey: KEY })
+    expect(buildAnthropicClientOptions(KEY, '')).toEqual({ apiKey: KEY })
+    expect(buildAnthropicClientOptions(KEY, '   ')).toEqual({ apiKey: KEY })
   })
 })

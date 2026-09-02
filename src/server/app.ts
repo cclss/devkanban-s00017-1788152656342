@@ -129,6 +129,9 @@ export function createApp(options: CreateAppOptions = {}): Express {
       apiKey: optionalString(body.apiKey),
       provider: optionalString(body.provider),
       model: optionalString(body.model),
+      // Like the API key: read from the body, threaded to the evaluator's
+      // request header, and never interpolated into the request log below.
+      workspaceId: optionalString(body.workspaceId),
     }
 
     res.status(200)

@@ -74,6 +74,7 @@ export default function App() {
         apiKey,
         provider: storedCredential(API_KEY_STORAGE_KEYS.provider),
         model: storedCredential(API_KEY_STORAGE_KEYS.model),
+        workspaceId: storedCredential(API_KEY_STORAGE_KEYS.workspaceId),
       })
     },
     [conflictMode, stage, start],

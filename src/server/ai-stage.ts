@@ -44,6 +44,12 @@ export interface AiEvaluatorInput {
   /** Selected model id (e.g. `claude-sonnet-5`, `gpt-4o`), when chosen. */
   model?: string
   /**
+   * Optional Anthropic workspace id for an identity-linked key. The Claude
+   * evaluator turns it into the `anthropic-workspace-id` request header; absent
+   * is fine (an ordinary key needs no workspace). Other vendors ignore it.
+   */
+  workspaceId?: string
+  /**
    * Captured page renderings, when available. The real evaluator sends these as
    * image blocks alongside the page text; absence is fine (text-only rubric).
    */

@@ -96,6 +96,38 @@ describe('runAnalysis — happy path', () => {
     expect(events.at(-1)?.type).toBe('result')
   })
 
+  it('threads the request workspace id into the AI evaluator input', async () => {
+    let seenWorkspaceId: string | undefined
+    const recording: AiEvaluator = async (input) => {
+      seenWorkspaceId = input.workspaceId
+      return { ok: true, axes: AXES, llmScore: 30 }
+    }
+    await collect(
+      {
+        load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+        evaluateAi: recording,
+      },
+      { url: PUBLIC_URL, apiKey: 'sk-test', workspaceId: 'wrkspc_pipeline_1' },
+    )
+    expect(seenWorkspaceId).toBe('wrkspc_pipeline_1')
+  })
+
+  it('leaves the evaluator workspace id undefined when the request omits it', async () => {
+    let seenWorkspaceId: string | undefined = 'sentinel'
+    const recording: AiEvaluator = async (input) => {
+      seenWorkspaceId = input.workspaceId
+      return { ok: true, axes: AXES, llmScore: 30 }
+    }
+    await collect(
+      {
+        load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+        evaluateAi: recording,
+      },
+      { url: PUBLIC_URL, apiKey: 'sk-test' },
+    )
+    expect(seenWorkspaceId).toBeUndefined()
+  })
+
   it('builds a full 100-scale report combining audit + AI scores', async () => {
     const events = await collect({
       load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },

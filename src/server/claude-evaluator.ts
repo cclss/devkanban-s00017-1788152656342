@@ -53,21 +53,47 @@ export const DEFAULT_AI_MODEL = 'claude-sonnet-5'
 const MAX_TOKENS = 2048
 
 /**
- * The injected message-create boundary. Given the API key and a Messages
- * request, it returns Claude's reply. The default builds a per-call client from
- * the key; tests inject a stub so no network (and no real key) is involved.
+ * The injected message-create boundary. Given the API key, a Messages request,
+ * and an optional workspace id, it returns Claude's reply. The default builds a
+ * per-call client from the key; tests inject a stub so no network (and no real
+ * key) is involved.
  *
  * The key is a *separate* argument — never part of `params` — so it stays out of
- * anything that could be logged or echoed.
+ * anything that could be logged or echoed. `workspaceId` is likewise a discrete
+ * argument the default turns into a request header, never body content.
  */
 export type AnthropicMessageCreate = (
   apiKey: string,
   params: Anthropic.MessageCreateParamsNonStreaming,
+  workspaceId?: string,
 ) => Promise<Anthropic.Message>
 
+/** Constructor options for the per-call Anthropic client. */
+type AnthropicClientOptions = NonNullable<
+  ConstructorParameters<typeof Anthropic>[0]
+>
+
+/**
+ * Builds the Anthropic client options from the key and optional workspace id.
+ * An identity-linked (organization/workspace-scoped) API key must declare which
+ * workspace a request acts in via the `anthropic-workspace-id` header, or the
+ * provider rejects it with a 400. The header is attached **only** when a
+ * non-blank workspace id is present, so an ordinary key's behaviour is unchanged.
+ */
+export function buildAnthropicClientOptions(
+  apiKey: string,
+  workspaceId?: string,
+): AnthropicClientOptions {
+  const options: AnthropicClientOptions = { apiKey }
+  if (typeof workspaceId === 'string' && workspaceId.trim() !== '') {
+    options.defaultHeaders = { 'anthropic-workspace-id': workspaceId }
+  }
+  return options
+}
+
 /** Default boundary: construct a client from the key and call the real API. */
-const defaultCreateMessage: AnthropicMessageCreate = (apiKey, params) =>
-  new Anthropic({ apiKey }).messages.create(params)
+const defaultCreateMessage: AnthropicMessageCreate = (apiKey, params, workspaceId) =>
+  new Anthropic(buildAnthropicClientOptions(apiKey, workspaceId)).messages.create(params)
 
 /**
  * The English rubric system prompt. Tone: a concise, professional landing-page
@@ -313,7 +339,7 @@ export function createClaudeAiEvaluator(
     try {
       // One initial attempt, then exactly one retry on a parse failure only.
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const message = await createMessage(apiKey, request)
+        const message = await createMessage(apiKey, request, input.workspaceId)
         const axes = parseRubricAxes(replyText(message))
         if (axes) {
           const success: AiSuccess = {

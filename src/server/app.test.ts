@@ -15,7 +15,7 @@ import type { Server } from 'node:http'
 import { createApp, type CreateAppOptions } from './app'
 import { parseEvent, type StageEvent } from './stage-events'
 import type { LoadFetch, LoadFetchResponse } from './load-stage'
-import type { AiEvaluator } from './ai-stage'
+import type { AiEvaluator, AiEvaluatorInput } from './ai-stage'
 import { LLM_AXIS_IDS } from '../core/report'
 
 /** A fetch stub returning fixed HTML with a 200 status (no real network). */
@@ -219,6 +219,57 @@ describe('POST /api/analyze', () => {
       expect(line).not.toContain(secret)
     }
     expect(body).not.toContain(secret)
+  })
+
+  it('threads the workspace id to the evaluator and never logs it', async () => {
+    const workspaceId = 'wrkspc-should-stay-private-55501'
+    const lines: string[] = []
+    const logger = {
+      log: (...args: unknown[]) => lines.push(args.join(' ')),
+      error: (...args: unknown[]) => lines.push(args.join(' ')),
+    }
+    let seen: AiEvaluatorInput | undefined
+    const recordingEvaluator: AiEvaluator = async (input) => {
+      seen = input
+      return {
+        ok: true,
+        llmScore: 40,
+        axes: LLM_AXIS_IDS.map((id) => ({
+          id,
+          label: id,
+          score: 13,
+          maxScore: 14,
+          comment: 'Good',
+          suggestions: ['Improve'],
+        })),
+      }
+    }
+    const base = boot({
+      logger,
+      deps: {
+        load: {
+          fetchImpl: okFetch('<html><body>ok</body></html>'),
+          guardOptions: { resolver: publicResolver },
+        },
+        evaluateAi: recordingEvaluator,
+      },
+    })
+
+    const res = await analyze(base, {
+      url: 'https://example.com',
+      apiKey: 'k',
+      workspaceId,
+    })
+    const body = await res.text()
+
+    // The workspace id reaches the evaluator (→ Anthropic header)…
+    expect(seen?.workspaceId).toBe(workspaceId)
+    // …but never appears in any log line (method+url only) or the response body.
+    expect(lines.length).toBeGreaterThan(0)
+    for (const line of lines) {
+      expect(line).not.toContain(workspaceId)
+    }
+    expect(body).not.toContain(workspaceId)
   })
 
   it('never writes the API key to any log line, even on failure', async () => {

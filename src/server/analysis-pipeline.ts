@@ -59,6 +59,12 @@ export interface AnalysisRequest {
   provider?: string
   /** Selected model id (e.g. `claude-sonnet-5`). */
   model?: string
+  /**
+   * Optional Anthropic workspace id for an identity-linked key. Threaded to the
+   * Claude evaluator's `anthropic-workspace-id` header; never logged or put in
+   * the URL. Absent → unchanged behaviour.
+   */
+  workspaceId?: string
 }
 
 /** Injectable dependencies for {@link runAnalysis} (all with sane defaults). */
@@ -212,6 +218,7 @@ export async function* runAnalysis(
       apiKey: request.apiKey,
       provider: request.provider,
       model: request.model,
+      workspaceId: request.workspaceId,
       screenshots,
     },
     evaluateAi,

@@ -51,6 +51,11 @@ export interface AnalyzeParams {
   provider?: string
   /** Selected model id (e.g. `claude-sonnet-5`). */
   model?: string
+  /**
+   * Optional Anthropic workspace id for an identity-linked key — sent in the
+   * body like the key, never in the URL or a log. Absent → unchanged behaviour.
+   */
+  workspaceId?: string
 }
 
 /** Callbacks the client fires as the stream is read. */
@@ -100,6 +105,7 @@ export async function postAnalyze(
         apiKey: params.apiKey,
         provider: params.provider,
         model: params.model,
+        workspaceId: params.workspaceId,
       }),
     })
 
