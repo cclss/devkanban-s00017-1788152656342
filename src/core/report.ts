@@ -188,6 +188,22 @@ export interface AnalysisReport {
    * details" disclosure so the terse `partialReason` stays scannable.
    */
   partialDetail?: string
+  /**
+   * The provider HTTP status code behind the partial result, when the AI failure
+   * carried one (e.g. 401, 404, 429, 500). Present only on `done-partial`, and
+   * only for failures that came from an HTTP response — absent for transport
+   * errors, the parse failure, and the no-key skip. Surfaced in the "View failure
+   * details" disclosure and the markdown export. Never carries the API key.
+   */
+  partialStatusCode?: number
+  /**
+   * A short, **key-masked** summary of the provider error (status + message)
+   * behind the partial result. Present only on `done-partial` when the failure
+   * carried one. It is produced by `maskApiKey`, so the raw API key can never
+   * appear here; shown in the "View failure details" disclosure and the markdown
+   * export so an operator can diagnose the real cause.
+   */
+  partialSummary?: string
 }
 
 /**

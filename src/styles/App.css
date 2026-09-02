@@ -1275,6 +1275,21 @@
   color: var(--color-text-secondary);
 }
 
+/* Provider diagnostic lines inside the disclosure: the HTTP status code and the
+ * key-masked provider error summary. Same muted scale as the detail body; the
+ * summary carries the raw provider text, so it wraps rather than truncates. */
+.report-detail__status,
+.report-detail__provider {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-size-xs);
+  line-height: var(--line-height-base);
+  color: var(--color-text-secondary);
+}
+
+.report-detail__provider {
+  overflow-wrap: anywhere;
+}
+
 /* ── Screenshot tabs ───────────────────────────────────────── */
 .report-shots {
   display: flex;

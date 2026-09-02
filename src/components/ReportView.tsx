@@ -74,6 +74,10 @@ export const REPORT_VIEW_STRINGS = {
   download: 'Download markdown report',
   /** Disclosure toggle revealing the detailed failure reason. */
   detailToggle: 'View failure details',
+  /** Label prefix for the provider HTTP status code inside the failure details. */
+  providerStatusLabel: 'Provider status code',
+  /** Label prefix for the masked provider error summary inside the failure details. */
+  providerSummaryLabel: 'Provider response',
   /** Accessible label for the error card region. */
   errorLabel: 'Analysis failed',
   /** Screenshot viewport tab labels. */
@@ -84,18 +88,43 @@ export const REPORT_VIEW_STRINGS = {
 const MARKDOWN_MIME = 'text/markdown;charset=utf-8'
 
 /**
- * Expandable "View details" disclosure carrying the detailed failure reason. Kept
- * collapsed by default so the terse headline message/notice stays scannable, and
- * renders nothing when there is no detail (e.g. a synthetic client-side error).
+ * Expandable "View details" disclosure carrying the detailed failure reason and,
+ * for a provider failure, the HTTP status code plus a key-masked error summary
+ * so an operator can diagnose the real cause. Kept collapsed by default so the
+ * terse headline message/notice stays scannable, and renders nothing when there
+ * is neither a detail nor any provider metadata (e.g. a synthetic client-side
+ * error). The `summary` is already redacted by the pipeline, so no API key can
+ * reach the DOM.
  */
-function FailureDetail({ detail }: { detail: string | undefined }) {
-  if (detail === undefined || detail === '') return null
+function FailureDetail({
+  detail,
+  statusCode,
+  summary,
+}: {
+  detail?: string
+  statusCode?: number
+  summary?: string
+}) {
+  const hasDetail = detail !== undefined && detail !== ''
+  const hasStatus = statusCode !== undefined
+  const hasSummary = summary !== undefined && summary !== ''
+  if (!hasDetail && !hasStatus && !hasSummary) return null
   return (
     <details className="report-detail">
       <summary className="report-detail__summary">
         {REPORT_VIEW_STRINGS.detailToggle}
       </summary>
-      <p className="report-detail__body">{detail}</p>
+      {hasDetail ? <p className="report-detail__body">{detail}</p> : null}
+      {hasStatus ? (
+        <p className="report-detail__status">
+          {REPORT_VIEW_STRINGS.providerStatusLabel}: {statusCode}
+        </p>
+      ) : null}
+      {hasSummary ? (
+        <p className="report-detail__provider">
+          {REPORT_VIEW_STRINGS.providerSummaryLabel}: {summary}
+        </p>
+      ) : null}
     </details>
   )
 }
@@ -233,7 +262,11 @@ function AnalysisReportView({
         ) : (
           <div className="grader-card grader-card--muted report-partial-notice" role="status">
             <p className="report-partial-notice__reason">{report.partialReason}</p>
-            <FailureDetail detail={report.partialDetail} />
+            <FailureDetail
+              detail={report.partialDetail}
+              statusCode={report.partialStatusCode}
+              summary={report.partialSummary}
+            />
           </div>
         )}
       </div>

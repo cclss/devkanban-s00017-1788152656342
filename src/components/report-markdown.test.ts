@@ -122,3 +122,32 @@ describe('buildReportMarkdown — partial-result detail', () => {
     expect(plain).not.toContain('Partial result detail')
   })
 })
+
+describe('buildReportMarkdown — provider status + masked summary', () => {
+  it('prints the provider status code and masked summary lines on a partial report', () => {
+    const md = buildReportMarkdown({
+      ...donePartialReport,
+      partialStatusCode: 404,
+      partialSummary: 'HTTP 404: model claude-does-not-exist not found',
+    })
+    expect(md).toContain('- Provider status code: 404')
+    expect(md).toContain('- Provider response: HTTP 404: model claude-does-not-exist not found')
+  })
+
+  it('omits both provider lines when the failure carried no status/summary', () => {
+    const md = buildReportMarkdown(donePartialReport)
+    expect(md).not.toContain('Provider status code')
+    expect(md).not.toContain('Provider response')
+  })
+
+  it('never emits a raw API key — only the already-masked summary reaches the file', () => {
+    const secret = 'sk-super-secret-value-abc123'
+    const md = buildReportMarkdown({
+      ...donePartialReport,
+      partialStatusCode: 401,
+      partialSummary: 'HTTP 401: authentication failed for [redacted]',
+    })
+    expect(md).not.toContain(secret)
+    expect(md).toContain('- Provider status code: 401')
+  })
+})

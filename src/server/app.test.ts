@@ -180,6 +180,47 @@ describe('POST /api/analyze', () => {
     expect(json.error).toMatch(/url/)
   })
 
+  it('logs the provider status + masked summary on a partial failure, never the key', async () => {
+    const secret = 'sk-super-secret-key-should-never-appear-98765'
+    const lines: string[] = []
+    const logger = {
+      log: (...args: unknown[]) => lines.push(args.join(' ')),
+      error: (...args: unknown[]) => lines.push(args.join(' ')),
+    }
+    // A classified provider failure (as the real evaluators emit): a reason plus
+    // the HTTP status and an already-masked summary. The edge must log the status
+    // and summary for diagnosis, but no key may appear in log or response.
+    const modelError: AiEvaluator = async () => ({
+      ok: false,
+      reason: 'model-error',
+      statusCode: 404,
+      summary: 'HTTP 404: model claude-does-not-exist not found',
+    })
+    const base = boot({
+      logger,
+      deps: {
+        load: {
+          fetchImpl: okFetch('<html><body>ok</body></html>'),
+          guardOptions: { resolver: publicResolver },
+        },
+        evaluateAi: modelError,
+      },
+    })
+
+    const res = await analyze(base, { url: 'https://example.com', apiKey: secret })
+    const body = await res.text()
+
+    // The provider status + summary reach the log for operator diagnosis…
+    const logged = lines.join('\n')
+    expect(logged).toContain('404')
+    expect(logged).toContain('model claude-does-not-exist not found')
+    // …but the key never appears in any log line or in the response body.
+    for (const line of lines) {
+      expect(line).not.toContain(secret)
+    }
+    expect(body).not.toContain(secret)
+  })
+
   it('never writes the API key to any log line, even on failure', async () => {
     const secret = 'sk-super-secret-key-should-never-appear-12345'
     const lines: string[] = []

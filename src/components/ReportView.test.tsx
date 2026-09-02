@@ -163,6 +163,31 @@ describe('ReportView — failure detail disclosure', () => {
     render(<ReportView report={donePartialReport} />)
     expect(screen.queryByText(REPORT_VIEW_STRINGS.detailToggle)).toBeNull()
   })
+
+  it('surfaces the provider status code and masked summary in the failure details', () => {
+    const secret = 'sk-super-secret-value-abc123'
+    render(
+      <ReportView
+        report={{
+          ...donePartialReport,
+          partialStatusCode: 404,
+          partialSummary: 'HTTP 404: model claude-does-not-exist not found',
+        }}
+      />,
+    )
+    // The disclosure opens even without a detail, because provider metadata exists.
+    expect(screen.getByText(REPORT_VIEW_STRINGS.detailToggle)).toBeDefined()
+    expect(
+      screen.getByText(`${REPORT_VIEW_STRINGS.providerStatusLabel}: 404`),
+    ).toBeDefined()
+    expect(
+      screen.getByText(
+        `${REPORT_VIEW_STRINGS.providerSummaryLabel}: HTTP 404: model claude-does-not-exist not found`,
+      ),
+    ).toBeDefined()
+    // No API key ever reaches the DOM.
+    expect(document.body.textContent).not.toContain(secret)
+  })
 })
 
 describe('ReportView — markdown download', () => {

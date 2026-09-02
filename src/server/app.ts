@@ -33,6 +33,8 @@ import {
   type AnalysisDeps,
   type AnalysisRequest,
 } from './analysis-pipeline'
+import { parseEvent } from './stage-events'
+import { maskApiKey } from './ai-stage'
 
 /** A minimal logger surface, so tests can capture output instead of the console. */
 export type AppLogger = Pick<Console, 'log' | 'error'>
@@ -59,6 +61,39 @@ const NDJSON_CONTENT_TYPE = 'application/x-ndjson; charset=utf-8'
  */
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
+}
+
+/**
+ * Logs the provider status code + masked error summary behind a `done-partial`
+ * result, so an operator can diagnose why the AI step failed from the server log.
+ * It inspects each streamed NDJSON line and acts only on the terminal `result`
+ * event; non-partial results and events without provider metadata are ignored.
+ *
+ * The summary is already redacted by the pipeline, but it is passed through
+ * {@link maskApiKey} once more here with the request's own key as a belt-and-
+ * braces guarantee that no key string can ever reach the server log.
+ */
+function logProviderFailure(
+  line: string,
+  apiKey: string | undefined,
+  logger: AppLogger,
+): void {
+  let event
+  try {
+    event = parseEvent(line)
+  } catch {
+    return
+  }
+  if (event.type !== 'result') return
+  const { result } = event
+  if (result.outcome !== 'done-partial') return
+  const { partialStatusCode, partialSummary } = result
+  if (partialStatusCode === undefined && !partialSummary) return
+
+  const parts: string[] = ['AI evaluation failed']
+  if (partialStatusCode !== undefined) parts.push(`provider status ${partialStatusCode}`)
+  if (partialSummary) parts.push(partialSummary)
+  logger.error(maskApiKey(parts.join(': '), apiKey))
 }
 
 /**
@@ -103,7 +138,14 @@ export function createApp(options: CreateAppOptions = {}): Express {
     res.setHeader('X-Accel-Buffering', 'no')
 
     try {
-      await streamAnalysis(request, (line) => res.write(line), options.deps)
+      await streamAnalysis(
+        request,
+        (line) => {
+          res.write(line)
+          logProviderFailure(line, request.apiKey, logger)
+        },
+        options.deps,
+      )
     } catch (error) {
       // Contain any unexpected pipeline error. Log the message only — never the
       // request body — so the key cannot leak into the error path either.

@@ -259,6 +259,62 @@ describe('runAnalysis — AI failure → done-partial', () => {
     expect(report.partialDetail).not.toBe(report.partialReason)
   })
 
+  it('threads the provider status code and masked summary onto the partial report', async () => {
+    // An evaluator that already classified a provider failure (as the real ones
+    // do): a reason plus the HTTP status and a key-masked summary. The pipeline
+    // must carry both onto the report so the UI / markdown / log can show them.
+    const modelError: AiEvaluator = async () => ({
+      ok: false,
+      reason: 'model-error',
+      statusCode: 404,
+      summary: 'HTTP 404: model claude-does-not-exist not found',
+    })
+    const events = await collect({
+      load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+      evaluateAi: modelError,
+    })
+    const report = resultOf(events) as AnalysisReport
+    expect(report.outcome).toBe('done-partial')
+    expect(report.partialStatusCode).toBe(404)
+    expect(report.partialSummary).toBe('HTTP 404: model claude-does-not-exist not found')
+  })
+
+  it('omits the provider status/summary for a failure that carries none', async () => {
+    // A statusless failure (e.g. a thrown error → ai-network) leaves both fields
+    // absent, so the report and its downstream surfaces show no provider line.
+    const events = await collect(
+      { load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } } },
+      { url: PUBLIC_URL }, // no apiKey → missing-key skip, no provider metadata
+    )
+    const report = resultOf(events) as AnalysisReport
+    expect(report.outcome).toBe('done-partial')
+    expect(report.partialStatusCode).toBeUndefined()
+    expect(report.partialSummary).toBeUndefined()
+  })
+
+  it('never lets an API key reach the partial report, even in the summary', async () => {
+    // The evaluator masks its own summary; assert the report carries no raw key
+    // on any partial field. The key here is key-shaped so the backstop redactor
+    // would catch it too.
+    const secret = 'sk-super-secret-value-abc123'
+    const leakyThenMasked: AiEvaluator = async () => ({
+      ok: false,
+      reason: 'invalid-key',
+      statusCode: 401,
+      summary: 'HTTP 401: authentication failed for [redacted]',
+    })
+    const events = await collect(
+      {
+        load: { fetchImpl: okFetch(), guardOptions: { allowPrivateNetwork: true } },
+        evaluateAi: leakyThenMasked,
+      },
+      { url: PUBLIC_URL, apiKey: secret },
+    )
+    const report = resultOf(events) as AnalysisReport
+    const serialized = JSON.stringify(report)
+    expect(serialized).not.toContain(secret)
+  })
+
   it('routes a rate-limit failure to its own partial copy', async () => {
     const rateLimited: AiEvaluator = async () => ({ ok: false, reason: 'rate-limit' })
     const events = await collect({

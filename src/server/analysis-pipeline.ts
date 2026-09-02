@@ -142,7 +142,7 @@ function buildPartialReport(
   ai: Extract<AiEvaluation, { ok: false }>,
   screenshots: Screenshot[],
 ): AnalysisReport {
-  return {
+  const report: AnalysisReport = {
     outcome: 'done-partial',
     url,
     analyzedAt,
@@ -161,6 +161,12 @@ function buildPartialReport(
     partialReason: partialReasonMessage(ai.reason),
     partialDetail: aiFailureDetail(ai.reason),
   }
+  // Thread the provider status code and key-masked error summary (already
+  // redacted by the evaluator) onto the report so the UI, markdown export, and
+  // server log can surface the real cause without ever exposing the API key.
+  if (ai.statusCode !== undefined) report.partialStatusCode = ai.statusCode
+  if (ai.summary !== undefined && ai.summary !== '') report.partialSummary = ai.summary
+  return report
 }
 
 /**

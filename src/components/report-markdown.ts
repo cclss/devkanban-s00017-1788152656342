@@ -159,6 +159,14 @@ export function buildReportMarkdown(report: AnalysisReport): string {
   if (partial && report.partialDetail) {
     lines.push(`- Partial result detail: ${report.partialDetail}`)
   }
+  // Provider status code + key-masked error summary (already redacted upstream),
+  // so the downloaded file carries the same diagnostic detail the screen shows.
+  if (partial && report.partialStatusCode !== undefined) {
+    lines.push(`- Provider status code: ${report.partialStatusCode}`)
+  }
+  if (partial && report.partialSummary) {
+    lines.push(`- Provider response: ${report.partialSummary}`)
+  }
   lines.push('')
 
   lines.push('## Category scores')
