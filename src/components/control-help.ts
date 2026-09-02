@@ -3,7 +3,8 @@
  *
  * Each control on the grader screen — the URL input, the start/reset diagnosis
  * button, the saved-address chips, the provider/model selects, the API-key input,
- * the reveal toggle, the Save-key button, the stage-force buttons, the conflict
+ * the optional workspace-id input, the reveal toggle, the Save-key button, the
+ * stage-force buttons, the conflict
  * simulator, the markdown download, and the screenshot tabs — gets one short
  * `HelpEntry{title, body}` describing what it does. These render inside the
  * accessible ⓘ popover ({@link module:components/InfoTooltip}) so a user can learn
@@ -38,6 +39,7 @@ export type ControlHelpKey =
   | 'provider'
   | 'model'
   | 'apiKey'
+  | 'workspaceId'
   | 'revealKey'
   | 'saveKey'
   | 'forceStage'
@@ -53,6 +55,7 @@ export const CONTROL_HELP_KEYS = [
   'provider',
   'model',
   'apiKey',
+  'workspaceId',
   'revealKey',
   'saveKey',
   'forceStage',
@@ -90,6 +93,10 @@ export const CONTROL_HELP: Record<ControlHelpKey, HelpEntry> = {
   apiKey: {
     title: 'API key input',
     body: 'Enter the Anthropic API key used to request AI evaluation. Use a key issued at console.anthropic.com → API Keys — it starts with sk-ant-api…. A Claude Code-only token from claude setup-token (it starts with sk-ant-oat…) is a different credential that the Messages API rejects, so this tool cannot use it. The entered key is kept only in this browser and is never stored or logged on the server.',
+  },
+  workspaceId: {
+    title: 'Workspace ID',
+    body: 'Optional. If your Anthropic API key is linked to a workspace (an identity-linked key), enter that workspace\'s ID here so the request runs in the right workspace. Find it at Console → Settings → Workspaces. Leave it blank to keep the existing behavior.',
   },
   revealKey: {
     title: 'Show / hide key',

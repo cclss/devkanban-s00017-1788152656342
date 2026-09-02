@@ -183,7 +183,12 @@ describe('ApiKeyPanel', () => {
   })
 
   it('fires onSave with the whole form value only when Save is pressed', () => {
-    const seen: { provider: string; model: string; apiKey: string }[] = []
+    const seen: {
+      provider: string
+      model: string
+      apiKey: string
+      workspaceId: string
+    }[] = []
     render(<ApiKeyPanel onSave={(value) => seen.push(value)} />)
     fireEvent.change(screen.getByLabelText(API_KEY_PANEL_STRINGS.keyLabel), {
       target: { value: 'sk-my-key' },
@@ -195,7 +200,61 @@ describe('ApiKeyPanel', () => {
       provider: 'anthropic',
       model: API_KEY_MODELS[0].id,
       apiKey: 'sk-my-key',
+      workspaceId: '',
     })
+  })
+
+  it('persists the optional workspace id on Save and pre-fills it on mount', () => {
+    const seen: { workspaceId: string }[] = []
+    render(<ApiKeyPanel onSave={(value) => seen.push(value)} />)
+    const workspaceInput = screen.getByLabelText(
+      API_KEY_PANEL_STRINGS.workspaceLabel,
+    ) as HTMLInputElement
+    fireEvent.change(workspaceInput, { target: { value: 'wrkspc_typed' } })
+    // No autosave: storage still holds the empty mount seed until Save.
+    expect(
+      window.localStorage.getItem(API_KEY_STORAGE_KEYS.workspaceId),
+    ).toBe('')
+
+    clickSave()
+    expect(
+      window.localStorage.getItem(API_KEY_STORAGE_KEYS.workspaceId),
+    ).toBe('wrkspc_typed')
+    expect(seen[seen.length - 1]?.workspaceId).toBe('wrkspc_typed')
+
+    // A fresh mount reads the same storage — the workspace id must reappear.
+    cleanup()
+    render(<ApiKeyPanel />)
+    expect(
+      (
+        screen.getByLabelText(
+          API_KEY_PANEL_STRINGS.workspaceLabel,
+        ) as HTMLInputElement
+      ).value,
+    ).toBe('wrkspc_typed')
+  })
+
+  it('treats an empty workspace id as a valid state (seeds it empty on mount)', () => {
+    render(<ApiKeyPanel />)
+    // Mount seed writes the key so it always exists, empty by default.
+    expect(
+      window.localStorage.getItem(API_KEY_STORAGE_KEYS.workspaceId),
+    ).toBe('')
+    // Saving with an empty workspace field keeps it empty (no gate).
+    clickSave()
+    expect(
+      window.localStorage.getItem(API_KEY_STORAGE_KEYS.workspaceId),
+    ).toBe('')
+  })
+
+  it('shows the workspace hint naming the Console → Settings → Workspaces path', () => {
+    render(<ApiKeyPanel />)
+    expect(
+      screen.getByText(API_KEY_PANEL_STRINGS.workspaceHint),
+    ).toBeDefined()
+    expect(API_KEY_PANEL_STRINGS.workspaceHint).toContain(
+      'Console → Settings → Workspaces',
+    )
   })
 
   it('offers both Anthropic and OpenAI providers', () => {
@@ -284,11 +343,22 @@ describe('ApiKeyPanel — per-control ⓘ help', () => {
       CONTROL_HELP.provider,
       CONTROL_HELP.model,
       CONTROL_HELP.apiKey,
+      CONTROL_HELP.workspaceId,
       CONTROL_HELP.revealKey,
       CONTROL_HELP.saveKey,
     ]) {
       expect(helpTrigger(entry).getAttribute('aria-expanded')).toBe('false')
     }
+  })
+
+  it('names the Workspaces lookup path and the blank-keeps-behavior rule in the workspace help', () => {
+    render(<ApiKeyPanel />)
+    fireEvent.click(helpTrigger(CONTROL_HELP.workspaceId))
+    expect(screen.getByText(CONTROL_HELP.workspaceId.body)).toBeDefined()
+    expect(CONTROL_HELP.workspaceId.body).toContain(
+      'Console → Settings → Workspaces',
+    )
+    expect(CONTROL_HELP.workspaceId.body).toContain('blank')
   })
 
   it('reveals the matching help body on activation without altering the control', () => {

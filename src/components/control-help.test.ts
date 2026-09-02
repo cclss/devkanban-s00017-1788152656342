@@ -40,6 +40,13 @@ describe('CONTROL_HELP copy', () => {
     expect(body).toContain('Claude Code-only token')
   })
 
+  it('names the Workspaces lookup path and blank-keeps-behavior in the workspace help', () => {
+    const body = CONTROL_HELP.workspaceId.body
+    expect(body).toContain('Console → Settings → Workspaces')
+    expect(body).toContain('blank')
+    expect(body.toLowerCase()).toContain('workspace')
+  })
+
   it('covers each distinct grader control called out in the grain', () => {
     const expected: readonly ControlHelpKey[] = [
       'urlInput',
@@ -48,6 +55,7 @@ describe('CONTROL_HELP copy', () => {
       'provider',
       'model',
       'apiKey',
+      'workspaceId',
       'revealKey',
       'saveKey',
       'forceStage',

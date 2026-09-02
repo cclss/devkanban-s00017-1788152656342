@@ -3,14 +3,18 @@
  *
  * This is the surface where the user enters the credentials the AI rubric
  * evaluation uses. The panel lets the user pick a provider/model and type a
- * masked key, then persist all three to browser-local storage with an explicit
+ * masked key, then persist all four to browser-local storage with an explicit
  * "Save" button (Design §Local storage key management). Nothing is written on
  * every keystroke: the field holds the typed value in component state, and only
- * a Save press mirrors it to the three owned localStorage keys — so switching the
+ * a Save press mirrors it to the four owned localStorage keys — so switching the
  * URL below (which re-renders the app but keeps this panel mounted) never wipes a
  * key the user is still typing.
  *
- * The three keys are read back on mount so a revisit / reload is pre-filled, and a
+ * The optional workspace-id field carries the `anthropic-workspace-id` an
+ * identity-linked key needs; it is stored and revealed exactly like the other
+ * fields and an empty value is valid (the request then omits the header).
+ *
+ * The four keys are read back on mount so a revisit / reload is pre-filled, and a
  * reveal toggle flips the masked field to plain text so a saved value can be
  * confirmed by eye. Entering no key is a valid state: the app simply runs without
  * AI evaluation (partial result), so this panel imposes no "key required" gate.
@@ -78,6 +82,16 @@ export const API_KEY_PANEL_STRINGS = {
   modelLabel: 'Model',
   keyLabel: 'API key',
   keyPlaceholder: 'sk-...',
+  /** Label for the optional identity-linked workspace id field. */
+  workspaceLabel: 'Workspace ID (optional)',
+  /** Placeholder hinting the field may stay empty. */
+  workspacePlaceholder: 'wrkspc_… (optional)',
+  /**
+   * Hint under the workspace field: names the lookup path and states that leaving
+   * it blank keeps the existing behavior (no workspace header sent).
+   */
+  workspaceHint:
+    'Only needed for a workspace-linked API key. Find the ID at Console → Settings → Workspaces. Leave it blank to keep the existing behavior.',
   /** Button that persists the current provider/model/key to this browser. */
   save: 'Save',
   /** Confirmation shown after a save; cleared as soon as a field changes. */
@@ -107,6 +121,7 @@ export interface ApiKeyPanelProps {
     provider: string
     model: string
     apiKey: string
+    workspaceId: string
   }) => void
 }
 
@@ -128,6 +143,10 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
   const [apiKey, setApiKey] = useState(
     () => readStored(API_KEY_STORAGE_KEYS.apiKey) ?? '',
   )
+  // Optional workspace id for an identity-linked key. Empty is a valid state.
+  const [workspaceId, setWorkspaceId] = useState(
+    () => readStored(API_KEY_STORAGE_KEYS.workspaceId) ?? '',
+  )
   // Reveal the masked key on demand so a persisted value can be confirmed by
   // eye. Purely presentational — it never touches storage. Defaults to masked.
   const [revealed, setRevealed] = useState(false)
@@ -138,6 +157,8 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
   const providerId = useId()
   const modelId = useId()
   const keyId = useId()
+  const workspaceFieldId = useId()
+  const workspaceHintId = useId()
   const hintId = useId()
   const guidanceId = useId()
   const statusId = useId()
@@ -153,6 +174,7 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
     writeStored(API_KEY_STORAGE_KEYS.provider, provider)
     writeStored(API_KEY_STORAGE_KEYS.model, model)
     writeStored(API_KEY_STORAGE_KEYS.apiKey, apiKey)
+    writeStored(API_KEY_STORAGE_KEYS.workspaceId, workspaceId)
     // Mount-only seed: subsequent writes happen only on Save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -177,14 +199,20 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
     setSaved(false)
   }
 
+  const handleWorkspace = (value: string) => {
+    setWorkspaceId(value)
+    setSaved(false)
+  }
+
   // Explicit persistence: mirror the current form to the three owned keys. This
   // is the only path (besides the mount seed) that writes storage.
   const handleSave = () => {
     writeStored(API_KEY_STORAGE_KEYS.provider, provider)
     writeStored(API_KEY_STORAGE_KEYS.model, model)
     writeStored(API_KEY_STORAGE_KEYS.apiKey, apiKey)
+    writeStored(API_KEY_STORAGE_KEYS.workspaceId, workspaceId)
     setSaved(true)
-    onSave?.({ provider, model, apiKey })
+    onSave?.({ provider, model, apiKey, workspaceId })
   }
 
   return (
@@ -278,6 +306,30 @@ export default function ApiKeyPanel({ onSave }: ApiKeyPanelProps) {
             {CLAUDE_CODE_TOKEN_GUIDANCE}
           </p>
         ) : null}
+      </div>
+
+      <div className="api-key__field">
+        <div className="control-help">
+          <label className="api-key__label" htmlFor={workspaceFieldId}>
+            {API_KEY_PANEL_STRINGS.workspaceLabel}
+          </label>
+          <InfoTooltip entry={CONTROL_HELP.workspaceId} />
+        </div>
+        {/* Optional: only a workspace-linked (identity-linked) key needs this;
+            empty is valid and the request then sends no workspace header. */}
+        <input
+          id={workspaceFieldId}
+          type="text"
+          className="field-input"
+          value={workspaceId}
+          placeholder={API_KEY_PANEL_STRINGS.workspacePlaceholder}
+          autoComplete="off"
+          aria-describedby={workspaceHintId}
+          onChange={(event) => handleWorkspace(event.target.value)}
+        />
+        <p id={workspaceHintId} className="api-key__hint">
+          {API_KEY_PANEL_STRINGS.workspaceHint}
+        </p>
       </div>
 
       <div className="api-key__actions">
