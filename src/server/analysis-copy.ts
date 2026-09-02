@@ -182,7 +182,7 @@ const AI_FAILURE_DETAIL: Readonly<Record<AiFailureReason, string>> = {
   'missing-key':
     'This is not an error: no API key was entered, so the AI evaluation was skipped and the report was completed on the 60-point automated audit scale. To include the AI score, enter an API key in the API key panel, save it, then run the diagnosis again.',
   'invalid-key':
-    'The API key you entered was rejected by the provider (an authentication error). Check that the key value is correct and still active, then run the diagnosis again.',
+    'The API key you entered was rejected by the provider (an authentication error). Confirm the key is one issued at console.anthropic.com → API Keys (it starts with sk-ant-api…), not a Claude Code token, then run the diagnosis again.',
   'model-error':
     'The selected model could not be used — it may not exist, or your API key may not have permission to use it. Check the model id, confirm your plan has access to it or pick a different model, then run the diagnosis again.',
   'vision-unsupported':

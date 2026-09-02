@@ -155,6 +155,16 @@ describe('aiFailureDetail', () => {
     expect(aiFailureDetail('parse-failure')).toContain('JSON')
   })
 
+  it('tells the user to confirm a console-issued API key (sk-ant-api…), not a Claude Code token', () => {
+    // Grain-2: the 401 failure detail mirrors the grain-1 pre-block guidance so
+    // both surfaces point the user at the console-issued key and name the Claude
+    // Code token as the likely wrong credential.
+    const detail = aiFailureDetail('invalid-key')
+    expect(detail).toContain('console.anthropic.com → API Keys')
+    expect(detail).toContain('sk-ant-api…')
+    expect(detail).toContain('Claude Code token')
+  })
+
   it('gives each new taxonomy reason a distinct, actionable "what to check next" detail', () => {
     // model-error → model permission / different model; vision-unsupported →
     // vision-capable model; request-error → retry / other model; ai-network and
