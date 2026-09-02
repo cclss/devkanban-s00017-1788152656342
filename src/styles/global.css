@@ -178,6 +178,8 @@ body {
  * grains — this layer only defines the visual states. */
 .grader-stepper {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: var(--space-sm);
 }
